@@ -25,7 +25,7 @@ def get_long_text_list(dataset_repo, output_dir, min_len, max_len):
 
     long_text_list = []
     for example in tqdm(dataset, desc="Processing examples"):
-        if min_len*2 <= len(example["text"]) <= max_len*6:  # one token \approx 2~6 char, here filter very long and very short text
+        if 0 <= len(example["text"]) <= max_len*6:  # one token \approx 2~6 char, here filter very long and very short text
             long_text_list.append(example["text"])
         
     with open(f'{output_dir}/long_text.json', 'w', encoding='utf-8') as f:
@@ -58,6 +58,9 @@ def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruct
             continue
         if len(ids)>max_len:
             continue
+
+        # only choose 1018 tokens, prefix and lm are all 510 length
+        ids = ids[:min_len]
         # half for prefix, half for LM
         last_start = len(ids) // 2
 
