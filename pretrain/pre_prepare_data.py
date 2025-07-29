@@ -1,5 +1,5 @@
 from datasets import load_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoTokenizer
 import torch
 from torch import nn
 import os

@@ -3,4 +3,6 @@
 **log.txt
 **/main_experiment/
 **/ablation_experiment/
+**pretrain_script.sh
+**sft_script.sh
 ./pretrain/log.txt

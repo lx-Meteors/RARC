@@ -1,11 +1,10 @@
-import random
 import sys
 import os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "transformers", "src"))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from path_config import BASE_PATH
 sys.path.append(BASE_PATH)
 import torch
-import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, Dataset, IterableDataset
 import torch.multiprocessing as mp
@@ -13,7 +12,6 @@ import os
 import time
 import json
 from tqdm import tqdm
-from transformers.models.llama.configuration_llama import LlamaConfig
 import argparse
 
 from pre_prepare_data import get_examples
