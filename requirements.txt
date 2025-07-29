@@ -57,7 +57,7 @@ sympy==1.13.3
 tokenizers==0.19.1
 torch==2.2.0
 tqdm==4.66.4
-transformers==4.42.3
+transformers==4.43.1
 triton==2.2.0
 typing_extensions==4.12.2
 tzdata==2025.1
