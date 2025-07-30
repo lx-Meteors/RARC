@@ -2,5 +2,6 @@
 **/debug/
 **log.txt
 **/main_experiment/
+**/main_experiment_5x/
 **/ablation_experiment/
 ./pretrain/log.txt
