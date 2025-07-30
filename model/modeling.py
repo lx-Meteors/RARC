@@ -48,7 +48,7 @@ class CompressLLM(torch.nn.Module):
         loss_info = {}
 
         # context position ids:[1,......,end_idx]
-        compress_token_ids, compress_token, end_idx, encoder_hidden_states, encoder_past_key_values = self.compress(inputs)
+        compress_token_ids, compress_token, end_idx, encoder_hidden_states, encoder_past_key_values, encoder_mem_size = self.compress(inputs)
 
 ##########################################################AE Task########################################################################
 
@@ -68,7 +68,7 @@ class CompressLLM(torch.nn.Module):
             if self.task_config["use_pe"]:
                 outputs = self.decoder(position_ids=ae_position_ids, inputs_embeds=ae_emb,
                                        encoder_hidden_states=encoder_hidden_states,
-                                       encoder_past_key_values=encoder_past_key_values, mem_size=self.mem_size)
+                                       encoder_past_key_values=encoder_past_key_values, mem_size=encoder_mem_size)
             else:
                 outputs = self.decoder(inputs_embeds=ae_emb)
             # [B,mem_size+S,V] -> [B,S,V]
@@ -104,7 +104,7 @@ class CompressLLM(torch.nn.Module):
             if self.task_config["use_pe"]:
                 outputs = self.decoder(inputs_embeds=lm_emb, position_ids=lm_position_ids,
                                        encoder_hidden_states=encoder_hidden_states,
-                                       encoder_past_key_values=encoder_past_key_values, mem_size=self.mem_size)
+                                       encoder_past_key_values=encoder_past_key_values, mem_size=encoder_mem_size)
             else:
                 outputs = self.decoder(inputs_embeds=lm_emb)
             # [B,mem_size+S,V] -> [B,S,V]
@@ -141,7 +141,7 @@ class CompressLLM(torch.nn.Module):
             if self.task_config["use_pe"]:
                 outputs = self.decoder(inputs_embeds=lm_emb, position_ids=lm_position_ids,
                                        encoder_hidden_states=encoder_hidden_states,
-                                       encoder_past_key_values=encoder_past_key_values, mem_size=self.mem_size)
+                                       encoder_past_key_values=encoder_past_key_values, mem_size=encoder_mem_size)
             else:
                 outputs = self.decoder(inputs_embeds=lm_emb)
             # [B,mem_size+S,V] -> [B,S,V]
@@ -167,7 +167,11 @@ class CompressLLM(torch.nn.Module):
         return num_chunks
 
     def get_uniform_position_ids(self, x_1, x_n, ratio):
-        return torch.arange((x_1 + (ratio - 1) // 2), x_n, step=ratio, device=self.device).unsqueeze(0)
+        start = (x_1 + (ratio - 1) // 2)
+        end = x_n
+        if start > end: # 因为有时候会存在513 > 512的情况 -> 实际长度512 所以start应该从511开始
+            start = x_1
+        return torch.arange(start, end, step=ratio, device=self.device).unsqueeze(0)
 
     def compress(self, inputs):
         bsz, total_length = inputs['input_ids'].size()
@@ -180,9 +184,11 @@ class CompressLLM(torch.nn.Module):
         chunk_size = self.chunk_size
         # 收集compress_token
         end_idx = 0
+        encoder_mem_size = 0
         compress_token = None
         compress_token_ids = None
         encoder_hidden_states = None
+        all_encoder_hidden_states = []
         all_trimmed_past_key_values = []
         for chunk_idx in range(num_chunks):
             # 片段token：0-509 -> 510-1019 -> 1020-1529 -> ...
@@ -196,13 +202,16 @@ class CompressLLM(torch.nn.Module):
             # [1,seq_len]
             position_ids = torch.arange(start_idx + 1, end_idx + 1, device=inputs_embeds.device).unsqueeze(0)
             # [1,mem_size]：compress token position information, the step is compression ratio
-            mem_position_ids = self.get_uniform_position_ids(x_1=start_idx + 1, x_n=start_idx+chunk_size, ratio=self.compress_ratio)
+            mem_position_ids = self.get_uniform_position_ids(x_1=start_idx + 1, x_n=end_idx+1, ratio=self.compress_ratio)
+            # 获取当前需要mem_token(压缩)数量
+            current_mem_size = mem_position_ids.size(1)
+            encoder_mem_size += current_mem_size
             # print(f"encode_position_ids:{encode_position_ids}")
 
             # 添加role_token
             encode_inputs_embeds = inputs_embeds.clone()
-            role_embeds = self.role_tokens.unsqueeze(0).expand(bsz, self.mem_size, emb_size)
-            mem_real_idx = mem_position_ids.squeeze(0) - 1
+            role_embeds = (self.role_tokens[:current_mem_size,:]).unsqueeze(0).expand(bsz, current_mem_size, emb_size)
+            mem_real_idx = mem_position_ids.squeeze(0) - 1 - start_idx
             encode_inputs_embeds.index_add_(1, mem_real_idx, role_embeds)
             # 添加双向注意力
             attention_mask = self.build_attention_mask_full_bidirectional(seq_len).unsqueeze(0).unsqueeze(1).to(inputs_embeds.device).to(torch.bfloat16)
@@ -230,7 +239,8 @@ class CompressLLM(torch.nn.Module):
                 compress_token = torch.cat((compress_token, mem_hidden), dim=1)
 
             # 获取encoder_hidden_state
-            encoder_hidden_states = torch.stack([layer[:, mem_real_idx, :] for layer in outputs.hidden_states],dim=0)  # [num_layers, B, self.mem_size, D]
+            chunk_encoder_hidden_states  = torch.stack([layer[:, mem_real_idx, :] for layer in outputs.hidden_states],dim=0)  # [num_layers, B, self.mem_size, D]
+            all_encoder_hidden_states.append(chunk_encoder_hidden_states)
             # 存储kv cache
             past_key_values = outputs.past_key_values
             trimmed_past_key_values = tuple(
@@ -238,13 +248,15 @@ class CompressLLM(torch.nn.Module):
                 for layer_key, layer_value in past_key_values
             )
             all_trimmed_past_key_values.append(trimmed_past_key_values)
+        # 获取并拼接hidden_state
+        encoder_hidden_states = torch.cat(all_encoder_hidden_states, dim=2)
         # 获取并拼接kv
         encoder_past_key_values = self.concat_past_key_values_by_layer(all_trimmed_past_key_values)
 
-        return compress_token_ids, compress_token, end_idx, encoder_hidden_states, encoder_past_key_values
+        return compress_token_ids, compress_token, end_idx, encoder_hidden_states, encoder_past_key_values, encoder_mem_size
 
     def lm_inference(self,inputs,generate_num=1024):
-        compress_token_ids, compress_token, end_idx, encoder_hidden_states, encoder_past_key_values = self.compress(inputs)
+        compress_token_ids, compress_token, end_idx, encoder_hidden_states, encoder_past_key_values, encoder_mem_size = self.compress(inputs)
         lm_target_emb = self.decoder.model.embed_tokens(inputs['lm_targets'])
         bsz, seq_len, emb_size = lm_target_emb.size()
         expand_lm_token = self.special_tokens[1:2].unsqueeze(0).expand(bsz, 1, emb_size)
@@ -265,7 +277,7 @@ class CompressLLM(torch.nn.Module):
             elif i == 0:
                 out = self.decoder(position_ids=next_position_ids, inputs_embeds=next_inputs_embeds,
                                    past_key_values=past_key_values, use_cache=True, encoder_hidden_states=encoder_hidden_states,
-                                   encoder_past_key_values=encoder_past_key_values, mem_size=self.mem_size)
+                                   encoder_past_key_values=encoder_past_key_values, mem_size=encoder_mem_size)
             else:
                 out = self.decoder(inputs_embeds=next_inputs_embeds, past_key_values=past_key_values, use_cache=True)
             # [B,S,V] -> [B,V]
@@ -284,7 +296,7 @@ class CompressLLM(torch.nn.Module):
 
 
     def ae_inference(self, inputs):
-        compress_token_ids, compress_token, end_idx, encoder_hidden_states, encoder_past_key_values = self.compress(inputs)
+        compress_token_ids, compress_token, end_idx, encoder_hidden_states, encoder_past_key_values, encoder_mem_size = self.compress(inputs)
         bsz, tot_mem_size, emb_size = compress_token.size()
         # [1,E] -> [1,1,E] -> [B,1,E]
         expand_ae_token = self.special_tokens[0:1].unsqueeze(0).expand(bsz, 1, emb_size)
@@ -307,8 +319,8 @@ class CompressLLM(torch.nn.Module):
                 out = self.decoder(position_ids=next_position_ids, inputs_embeds=next_inputs_embeds, past_key_values=past_key_values, use_cache=True)
             elif i == 0:
                 out = self.decoder(position_ids=next_position_ids, inputs_embeds=next_inputs_embeds,
-                                   past_key_values=past_key_values, use_cache=True,
-                                   encoder_hidden_states=encoder_hidden_states,encoder_past_key_values=encoder_past_key_values, mem_size=self.mem_size)
+                                   past_key_values=past_key_values, use_cache=True,encoder_hidden_states=encoder_hidden_states,
+                                   encoder_past_key_values=encoder_past_key_values, mem_size=encoder_mem_size)
             else:
                 out = self.decoder(inputs_embeds=next_inputs_embeds, past_key_values=past_key_values, use_cache=True)
             # [B,S,V] -> [B,V]
