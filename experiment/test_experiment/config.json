@@ -16,8 +16,8 @@
         "is_pretrain":true,
         "is_sft":false,
         "chunk_size": 510,
-        "mem_size": 102,
-        "compress_ratio": 5,
+        "mem_size": 34,
+        "compress_ratio": 15,
         "task_type": "Compress",
         "use_pe": true,
         "use_ae_loss": true,
@@ -40,8 +40,8 @@
         "is_pretrain":false,
         "is_sft":true,
         "chunk_size": 510,
-        "mem_size": 102,
-        "compress_ratio": 5,
+        "mem_size": 34,
+        "compress_ratio": 15,
         "task_type": "Compress",
         "use_pe": true,
         "use_ae_loss": false,
@@ -51,8 +51,8 @@
         "dataset_repo": "/dataset/DKYoon/SlimPajama-6B",
         "samples_num": 320000,
         "min_len": 1018,
-        "max_len": 4080,
-        "model_id": "models/meta-llama/Llama-3.2-1B",
-        "instruction_dataset_repo": "dataset/bigData/mrqa-workshop_mrqa"
+        "max_len": 2040,
+        "model_id": "/models/meta-llama/Llama-3.2-1B",
+        "instruction_dataset_repo": "/dataset/bigData/mrqa-workshop_mrqa"
     }
 }

@@ -1,8 +1,9 @@
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "transformers", "src"))
 from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-from torch import nn
-import os
 import random
 from tqdm import tqdm
 import argparse
