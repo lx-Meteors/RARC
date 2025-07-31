@@ -168,12 +168,18 @@ class CompressLLM(torch.nn.Module):
         return num_chunks
 
     def get_uniform_position_ids(self, x_1, x_n, ratio):
-        return torch.arange((x_1 + (ratio - 1) // 2), x_n, step=ratio, device=self.device).unsqueeze(0)
+        start = (x_1 + (ratio - 1) // 2)
+        end = x_n
+        if start >= end:  # 因为有时候会存在513 > 512的情况 -> 实际长度512 所以start应该从511开始
+            start = x_1
+        return torch.arange(start, end, step=ratio, device=self.device).unsqueeze(0)
 
     def compress(self, inputs):
         bsz, total_length = inputs['input_ids'].size()
         ######################################应该不需要截断context##########################################
-        # inputs['input_ids'] = inputs['input_ids'][:, :total_length - (total_length % self.compress_ratio)]
+        # cut_id = total_length - (total_length % self.compress_ratio)
+        # if cut_id > 0:
+        #     inputs['input_ids'] = inputs['input_ids'][:, :cut_id]
         # bsz, total_length = inputs['input_ids'].size()
         ##########################################################################################################
         # num_chunks: 片段个数 | chunk_mem_size: 片段中mem的大小 | chunk_sizegth：片段长度
@@ -191,21 +197,23 @@ class CompressLLM(torch.nn.Module):
             inputs_embeds = self.model.model.embed_tokens(chunk_input_ids)
 
             bsz, seq_len, emb_size = inputs_embeds.size()
+            # [1,mem_size]：compress token position information, the step is compression ratio
+            mem_position_ids = self.get_uniform_position_ids(x_1=start_idx + 1, x_n=end_idx + 1, ratio=self.compress_ratio)
 
             #################################不需要截断##############################################
             # 为了适配最后一个片段不足510
             # mem_size = round((end_idx - start_idx) // self.compress_ratio)
-            # mem_tokens = self.mem_tokens[:mem_size, :]
-            # expand_mem = mem_tokens.unsqueeze(0).expand(bsz, mem_size, emb_size)
+            # 保证mem_size == mem_position_ids_size
+            mem_size = mem_position_ids.size(1)
+            mem_tokens = self.mem_tokens[:mem_size, :]
+            expand_mem = mem_tokens.unsqueeze(0).expand(bsz, mem_size, emb_size)
             ########################################################################################
-            expand_mem = self.mem_tokens.unsqueeze(0).expand(bsz, self.mem_size, emb_size)
+            # expand_mem = self.mem_tokens.unsqueeze(0).expand(bsz, self.mem_size, emb_size)
 
             encode_inputs_embeds = torch.cat([inputs_embeds, expand_mem], dim=1)
 
             # [1,seq_len]
             position_ids = torch.arange(start_idx + 1, end_idx + 1, device=inputs_embeds.device).unsqueeze(0)
-            # [1,mem_size]：compress token position information, the step is compression ratio
-            mem_position_ids = self.get_uniform_position_ids(x_1=start_idx + 1, x_n=start_idx+chunk_size, ratio=self.compress_ratio)
             # [1,seq_len+mem_size]
             encode_position_ids = torch.cat([position_ids, mem_position_ids], dim=1)
             # print(f"encode_position_ids:{encode_position_ids}")
@@ -224,7 +232,7 @@ class CompressLLM(torch.nn.Module):
 
             hidden_states = outputs.hidden_states[-1]
             # [B,mem_size,emb_size]
-            mem_hidden = hidden_states[:, -self.mem_size:]
+            mem_hidden = hidden_states[:, -mem_size:]
             # 在第一次循环时初始化 compress_token
             if compress_token is None:
                 compress_token = mem_hidden
