@@ -59,8 +59,6 @@ def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruct
         if len(ids)>max_len:
             continue
 
-        # only choose 1018 tokens, prefix and lm are all 510 length
-        ids = ids[:min_len]
         # half for prefix, half for LM
         last_start = len(ids) // 2
 

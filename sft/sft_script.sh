@@ -24,9 +24,9 @@
 # python ../util/evaluate_ood.py --work_dir '../experiment/local_experiment/ICAE_Llama-3.2-1B_DPL'
 # python ../util/evaluate_iid.py --work_dir '../experiment/local_experiment/ICAE_Llama-3.2-1B_DPL'
 
-#python instruction_prepare_data.py --work_dir  '../experiment/main_experiment/ICAE_EPL_1B'
-CUDA_VISIBLE_DEVICES=0,1,2,3 nohup python ./instruction_trainer.py --work_dir   '../experiment/main_experiment/ICAE_EPL_1B' --port 14527 > train.log 2>&1 &
-CUDA_VISIBLE_DEVICES=0,1,2,3 python ./instruction_evaluator.py --work_dir   '../experiment/main_experiment/ICAE_EPL_1B' --batch_size 1
+#python instruction_prepare_data.py --work_dir  '../experiment/main_experiment/ICAE_EPL_1B_SingleChunk'
+CUDA_VISIBLE_DEVICES=0,1,2,3 nohup python ./instruction_trainer.py --work_dir   '../experiment/main_experiment/ICAE_EPL_1B_SingleChunk' --port 14527 > train.log 2>&1 &
+CUDA_VISIBLE_DEVICES=0,1,2,3 python ./instruction_evaluator.py --work_dir   '../experiment/main_experiment/ICAE_EPL_1B_SingleChunk' --batch_size 1
 python ../util/evaluate_ood.py --work_dir  '../experiment/analysis_experiment/ICAE_EPL_1B_DynamicMemTokens'
 python ../util/evaluate_iid.py --work_dir  '../experiment/analysis_experiment/ICAE_EPL_1B_DynamicMemTokens'
 
@@ -34,6 +34,6 @@ python ../util/evaluate_iid.py --work_dir  '../experiment/analysis_experiment/IC
 CUDA_VISIBLE_DEVICES=1,2,3,4  nohup python ./instruction_trainer.py --work_dir   '../experiment/analysis_experiment/ICAE_EPL_1B_DynamicMemTokens' --port 14527 > train.log 2>&1 &
 CUDA_VISIBLE_DEVICES=1,2,3,4 python ./instruction_evaluator.py --work_dir   '../experiment/analysis_experiment/ICAE_EPL_1B_DynamicMemTokens' --batch_size 1
 # 后台启动方式
-#nohup python ./instruction_trainer.py --work_dir   '../experiment/main_experiment/ICAE_EPL_1B' --port 14527 > train.log 2>&1 &
+#nohup python ./instruction_trainer.py --work_dir   '../experiment/main_experiment/ICAE_EPL_1B_SingleChunk' --port 14527 > train.log 2>&1 &
 # tail -f train.log
 
