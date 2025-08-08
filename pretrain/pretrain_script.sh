@@ -18,10 +18,15 @@
 
 # nohup python pre_prepare_data.py --work_dir '../experiment/analysis_experiment/RARC_1B_MultiChunk' > pre_evaluator.log 2>&1 &
 
-CUDA_VISIBLE_DEVICES=0,5,6,7 nohup python ./pre_trainer.py --work_dir '../experiment/analysis_experiment/RARC_1B_MultiChunk' --port 14571 > RARC_1B_MultiChunk.log 2>&1 &
-python ./pre_evaluator.py --work_dir '../experiment/analysis_experiment/RARC_1B_MultiChunk' --batch_size 1
+python ./pre_trainer.py --work_dir '../experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache' --port 14571
+python ./pre_evaluator.py --work_dir '../experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache' --batch_size 1
 
+cd ..
+cd sft
+python ./instruction_trainer.py --work_dir   '../experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache' --port 14527
+python ./instruction_evaluator.py --work_dir   '../experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache' --batch_size 1
 
+# nohup bash pretrain_script.sh  > train.log 2>&1 &
 # 后台启动方式
 #nohup python ./pre_trainer.py --work_dir '../experiment/icae_15x_upl_sure' --port 14571 > train.log 2>&1 &
 # tail -f train.log
