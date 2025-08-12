@@ -224,7 +224,7 @@ class CompressLLM(torch.nn.Module):
 
             if self.task_config["use_pe"]:
                 outputs = self.model(position_ids=position_ids, inputs_embeds=encode_inputs_embeds,
-                                     output_hidden_states=True, attention_mask=attention_mask)
+                                     output_hidden_states=True, attention_mask=attention_mask, encoder_hidden_states=role_embeds, mem_size=mem_real_idx)
             else:
                 outputs = self.model(inputs_embeds=encode_inputs_embeds, output_hidden_states=True)
 
