@@ -9,7 +9,8 @@ import torch
 from torch import nn
 import math
 from model.lora import LinearLoraLayer
-
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 class CompressLLM(torch.nn.Module):
     def __init__(self, model_id, mem_size, compress_ratio, device_rank, task_config):
@@ -212,7 +213,7 @@ class CompressLLM(torch.nn.Module):
             encode_inputs_embeds = inputs_embeds.clone()
             role_embeds = (self.role_tokens[:current_mem_size,:]).unsqueeze(0).expand(bsz, current_mem_size, emb_size)
             mem_real_idx = mem_position_ids.squeeze(0) - 1 - start_idx
-            # encode_inputs_embeds.index_add_(1, mem_real_idx, role_embeds)
+            encode_inputs_embeds.index_add_(1, mem_real_idx, role_embeds)
             # 添加双向注意力
             # attention_mask = self.build_attention_mask_full_bidirectional(seq_len).unsqueeze(0).unsqueeze(1).to(inputs_embeds.device).to(torch.bfloat16)
 
@@ -223,7 +224,8 @@ class CompressLLM(torch.nn.Module):
                 compress_token_ids = torch.cat((compress_token_ids, mem_position_ids), dim=1)
 
             if self.task_config["use_pe"]:
-                outputs = self.model(position_ids=position_ids, inputs_embeds=encode_inputs_embeds,output_hidden_states=True)
+                outputs = self.model(position_ids=position_ids, inputs_embeds=encode_inputs_embeds,
+                                     output_hidden_states=True, output_attentions=True)
             else:
                 outputs = self.model(inputs_embeds=encode_inputs_embeds, output_hidden_states=True)
 
@@ -237,6 +239,8 @@ class CompressLLM(torch.nn.Module):
                 # 将新的 mem_hidden 拼接到 compress_token
                 compress_token = torch.cat((compress_token, mem_hidden), dim=1)
 
+            # 画注意力图
+            self.attn_analysis(outputs, chunk_input_ids)
             # 获取encoder_hidden_state
             chunk_encoder_hidden_states  = torch.stack([layer[:, mem_real_idx, :] for layer in outputs.hidden_states],dim=0)  # [num_layers, B, self.mem_size, D]
             all_encoder_hidden_states.append(chunk_encoder_hidden_states)
@@ -403,6 +407,34 @@ class CompressLLM(torch.nn.Module):
 
         return tuple(merged_past_key_values)
 
+    def attn_analysis(self, outputs, chunk_input_ids):
+        save_dir = "RARC/experiment/main_experiment/RARC_1B_MultiChunk_CausalMask"
+        os.makedirs(os.path.dirname(save_dir), exist_ok=True)
+        attentions = outputs.attentions
+        input_text = self.tokenizer.convert_ids_to_tokens(chunk_input_ids.tolist()[0])
+        for layer_index in range(len(attentions)):
+            # 选取当前层的注意力权重
+            attention = attentions[layer_index].squeeze(0)  # (num_heads, seq_len, seq_len)
+            # 计算所有注意力头的加和
+            total_attention = attention.sum(dim=0).to(torch.float32).cpu().numpy()  # (seq_len, seq_len)
+            # 绘制综合注意力热力图
+            plt.figure(figsize=(150, 150))
+            sns.heatmap(
+                total_attention,
+                xticklabels=input_text,
+                yticklabels=input_text,
+                cmap="Reds",  # 由浅粉色到深红色
+                square=True
+            )
+            # 旋转标签以避免重叠
+            plt.title(f"Summed Attention Map - Layer {layer_index + 1}")
+            # 保存图像到本地
+            file_name = f"attention_layer{layer_index + 1}_summed.png"
+            file_path = os.path.join(save_dir, file_name)
+            plt.savefig(file_path, format="png")
+            print(f"Summed Attention map saved at: {file_path}")
+            plt.close()  # 关闭当前图像，释放内存
+        exit()
 
 def freeze_encoder(model):
     for name, param in model.named_parameters():
