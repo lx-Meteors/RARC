@@ -175,7 +175,8 @@ def evaluate(rank, args, world_size):
 
     with open(args.work_dir+"/output/config.json") as f:
         config=json.load(f)
-
+    output_dir = "output"
+    config["data_config"]["output_dir"] = output_dir
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',

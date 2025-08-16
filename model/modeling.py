@@ -240,7 +240,7 @@ class CompressLLM(torch.nn.Module):
                 compress_token = torch.cat((compress_token, mem_hidden), dim=1)
 
             # 画注意力图
-            self.attn_analysis(outputs, chunk_input_ids)
+            self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
             # 获取encoder_hidden_state
             chunk_encoder_hidden_states  = torch.stack([layer[:, mem_real_idx, :] for layer in outputs.hidden_states],dim=0)  # [num_layers, B, self.mem_size, D]
             all_encoder_hidden_states.append(chunk_encoder_hidden_states)
@@ -407,11 +407,14 @@ class CompressLLM(torch.nn.Module):
 
         return tuple(merged_past_key_values)
 
-    def attn_analysis(self, outputs, chunk_input_ids):
-        save_dir = "RARC/experiment/main_experiment/RARC_1B_MultiChunk_CausalMask"
+    def attn_analysis(self, outputs, chunk_input_ids, mem_real_idx):
+        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/main_experiment/RARC_1B_MultiChunk_CausalMask"
         os.makedirs(os.path.dirname(save_dir), exist_ok=True)
         attentions = outputs.attentions
+        mem_tokens = [f"[MEM{i}]" for i in range(len(mem_real_idx))]
         input_text = self.tokenizer.convert_ids_to_tokens(chunk_input_ids.tolist()[0])
+        for i, idx in enumerate(mem_real_idx):
+            input_text[idx] = mem_tokens[i]
         for layer_index in range(len(attentions)):
             # 选取当前层的注意力权重
             attention = attentions[layer_index].squeeze(0)  # (num_heads, seq_len, seq_len)

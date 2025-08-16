@@ -19,7 +19,8 @@
 # nohup python pre_prepare_data.py --work_dir '../experiment/analysis_experiment/RARC_1B_MultiChunk' > pre_evaluator.log 2>&1 &
 
 CUDA_VISIBLE_DEVICES=4,5,6,7 python ./pre_trainer.py --work_dir '../experiment/analysis_experiment/RARC_1B_Only_KVCache' --port 14572
-CUDA_VISIBLE_DEVICES=4,5,6,7 python ./pre_evaluator.py --work_dir '../experiment/analysis_experiment/RARC_1B_Only_KVCache' --batch_size 1
+CUDA_VISIBLE_DEVICES=4 python ./pre_evaluator.py --work_dir '../experiment/main_experiment/RARC_1B_MultiChunk_CausalMask' --batch_size 1
+CUDA_VISIBLE_DEVICES=4 python ./pre_evaluator.py --work_dir '../experiment/analysis_experiment/RARC_1B_Only_KVCache' --batch_size 1
 #
 cd ..
 cd sft
