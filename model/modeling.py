@@ -206,6 +206,9 @@ class CompressLLM(torch.nn.Module):
             # [1,seq_len+mem_size]
             encode_position_ids = torch.cat([position_ids, mem_position_ids], dim=1)
             # print(f"encode_position_ids:{encode_position_ids}")
+            # 制作双向注意力
+            # total_input_len = encode_inputs_embeds.size(1)
+            # attention_mask = self.build_attention_mask_full_bidirectional(total_input_len).unsqueeze(0).unsqueeze(1).to(inputs_embeds.device).to(torch.bfloat16)
 
             if compress_token_ids is None:
                 compress_token_ids = mem_position_ids
@@ -386,6 +389,11 @@ class CompressLLM(torch.nn.Module):
                 return generate_text
         return generate_text
 
+    def build_attention_mask_full_bidirectional(self, num_input):
+        """创建一个全零的注意力掩码，代表所有token之间都互相可见。"""
+        total_len = num_input
+        mask = torch.zeros((total_len, total_len), device=self.device)  # 全0代表全可见
+        return mask
 
 def freeze_encoder(model):
     for name, param in model.named_parameters():
