@@ -258,10 +258,10 @@ class CompressLLM(torch.nn.Module):
             # 画TSNE
             original_k = self.flatten_kv(past_key_values, -1, "key")
             role_k = self.flatten_kv(trimmed_past_key_values, -1, "key")
-            self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="tsne", which="key", save_path="/mnt/zhaorunsong/lx/RARC/experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache")
+            self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="heatmap", which="key", save_path="/mnt/zhaorunsong/lx/RARC/experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache")
             original_v = self.flatten_kv(past_key_values, -1, "value")
             role_v = self.flatten_kv(trimmed_past_key_values, -1, "value")
-            self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="tsne", which="value",
+            self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="heatmap", which="value",
                                          save_path="/mnt/zhaorunsong/lx/RARC/experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache")
             exit()
         # 获取并拼接hidden_state
@@ -516,7 +516,7 @@ class CompressLLM(torch.nn.Module):
         else:
             raise ValueError("method 必须是 'tsne' 或 'heatmap'")
         if save_path:
-            file_name = f"{which}.png"
+            file_name = f"{method}-{which}.png"
             file_path = os.path.join(save_path, file_name)
             plt.savefig(file_path, format="png")
 
