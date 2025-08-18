@@ -247,17 +247,15 @@ class CompressLLM(torch.nn.Module):
             all_trimmed_past_key_values.append(trimmed_past_key_values)
 
             # 画TSNE
-            if chunk_idx == 1:
-                original_k = self.flatten_kv(original_past_key_values, -1, "key")
-                role_k = self.flatten_kv(trimmed_past_key_values, -1, "key")
-                self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="tsne", which="key",
-                                             save_path="/mnt/zhaorunsong/lx/RARC/experiment/main_experiment/500x_DPL_1B_MultiChunk")
-                original_v = self.flatten_kv(original_past_key_values, -1, "value")
-                role_v = self.flatten_kv(trimmed_past_key_values, -1, "value")
-                self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="tsne", which="value",
-                                             save_path="/mnt/zhaorunsong/lx/RARC/experiment/main_experiment/500x_DPL_1B_MultiChunk")
-                exit()
-
+            original_k = self.flatten_kv(original_past_key_values, -1, "key")
+            role_k = self.flatten_kv(trimmed_past_key_values, -1, "key")
+            self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="heatmap", which="key",
+                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/main_experiment/500x_DPL_1B_MultiChunk")
+            original_v = self.flatten_kv(original_past_key_values, -1, "value")
+            role_v = self.flatten_kv(trimmed_past_key_values, -1, "value")
+            self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="heatmap", which="value",
+                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/main_experiment/500x_DPL_1B_MultiChunk")
+            exit()
         # 假设 all_trimmed_past_key_values 是列表，每个元素的结构为 tuple，每个 tuple 中存储了各层的 (key, value)
         # 例如：all_trimmed_past_key_values[i][j] = (layer_j_key_of_segment_i, layer_j_value_of_segment_i)
 
@@ -469,15 +467,15 @@ class CompressLLM(torch.nn.Module):
                     np.linalg.norm(role_kv, axis=1, keepdims=True) * np.linalg.norm(original_kv, axis=1)
             )
 
-            fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-            sns.heatmap(sim_role, cmap="Blues", ax=axes[0])
+            fig, axes = plt.subplots(figsize=(12, 5))
+            sns.heatmap(sim_role, cmap="Blues", ax=axes)
             plt.title("Role-token vs Original KV (Cosine Similarity, Full Colors)")
             plt.show()
 
         else:
             raise ValueError("method 必须是 'tsne' 或 'heatmap'")
         if save_path:
-            file_name = f"{which}.png"
+            file_name = f"{method}-{which}.png"
             file_path = os.path.join(save_path, file_name)
             plt.savefig(file_path, format="png")
 
