@@ -508,8 +508,8 @@ class CompressLLM(torch.nn.Module):
                     np.linalg.norm(role_kv, axis=1, keepdims=True) * np.linalg.norm(original_kv, axis=1)
             )
 
-            fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-            sns.heatmap(sim_role, cmap="Blues", ax=axes[0])
+            fig, axes = plt.subplots(figsize=(12, 5))
+            sns.heatmap(sim_role, cmap="Blues", ax=axes)
             plt.title("Role-token vs Original KV (Cosine Similarity, Full Colors)")
             plt.show()
 
