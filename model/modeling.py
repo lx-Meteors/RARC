@@ -9,7 +9,9 @@ import torch
 from torch import nn
 import math
 from model.lora import LinearLoraLayer
+import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 import seaborn as sns
 
 class CompressLLM(torch.nn.Module):
@@ -239,8 +241,6 @@ class CompressLLM(torch.nn.Module):
                 # 将新的 mem_hidden 拼接到 compress_token
                 compress_token = torch.cat((compress_token, mem_hidden), dim=1)
 
-            # 画注意力图
-            self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
             # 获取encoder_hidden_state
             chunk_encoder_hidden_states  = torch.stack([layer[:, mem_real_idx, :] for layer in outputs.hidden_states],dim=0)  # [num_layers, B, self.mem_size, D]
             all_encoder_hidden_states.append(chunk_encoder_hidden_states)
@@ -251,6 +251,19 @@ class CompressLLM(torch.nn.Module):
                 for layer_key, layer_value in past_key_values
             )
             all_trimmed_past_key_values.append(trimmed_past_key_values)
+
+            # 画注意力图
+            # self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
+
+            # 画TSNE
+            original_k = self.flatten_kv(past_key_values, -1, "key")
+            role_k = self.flatten_kv(trimmed_past_key_values, -1, "key")
+            self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="tsne", which="key", save_path="/mnt/zhaorunsong/lx/RARC/experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache")
+            original_v = self.flatten_kv(past_key_values, -1, "value")
+            role_v = self.flatten_kv(trimmed_past_key_values, -1, "value")
+            self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="tsne", which="value",
+                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache")
+            exit()
         # 获取并拼接hidden_state
         encoder_hidden_states = torch.cat(all_encoder_hidden_states, dim=2)
         # 获取并拼接kv
@@ -438,6 +451,74 @@ class CompressLLM(torch.nn.Module):
             print(f"Summed Attention map saved at: {file_path}")
             plt.close()  # 关闭当前图像，释放内存
         exit()
+
+    def flatten_kv(self, past_key_values, layer_idx=0, which="value"):
+        """
+        把某一层的 KV 压平成 [seq_len, hidden_dim]，方便可视化
+        Args:
+            past_key_values: HuggingFace 输出的 past_key_values
+            layer_idx: 选择第几层
+            which: "key" 或 "value"
+        """
+        key, value = past_key_values[layer_idx]  # [B, H, T, D]
+        if which == "key":
+            x = key
+        else:
+            x = value
+
+        # 假设 batch=1，展平 head
+        x = x[0]  # -> [num_heads, seq_len, head_dim]
+        H, T, D = x.shape
+        x = x.permute(1, 0, 2).reshape(T, H * D)  # -> [seq_len, hidden_dim]
+        return x
+
+    def visualize_kv_similarity(self, original_kv, role_kv, method="tsne", which="key", save_path=""):
+        """
+        可视化不同压缩方法生成的 KV 表示
+
+        Args:
+            original_kv: torch.Tensor [N, d] 原始 KV 表示
+            role_kv: torch.Tensor [N, d] role-token 压缩后的 KV
+            method: "tsne" (降维可视化) | "heatmap" (相似度热力图)
+            n_samples: 采样数量，避免显存爆炸
+        """
+        # 转 numpy
+        original_kv = original_kv.detach().cpu().float().numpy()
+        role_kv = role_kv.detach().cpu().float().numpy()
+
+        if method == "tsne":
+            # 拼接
+            X = np.concatenate([original_kv, role_kv], axis=0)
+            labels = (["Original"] * len(original_kv) +
+                      ["Role-token"] * len(role_kv))
+
+            # t-SNE降维
+            X_embedded = TSNE(n_components=2, random_state=42, perplexity=30).fit_transform(X)
+
+            # 可视化
+            plt.figure(figsize=(8, 6))
+            sns.scatterplot(x=X_embedded[:, 0], y=X_embedded[:, 1], hue=labels, palette="deep", alpha=0.7)
+            plt.title("t-SNE of KV Representations (Full Colors)")
+            plt.legend()
+            plt.show()
+
+        elif method == "heatmap":
+            # 计算相似度（只和原始比）
+            sim_role = np.matmul(role_kv, original_kv.T) / (
+                    np.linalg.norm(role_kv, axis=1, keepdims=True) * np.linalg.norm(original_kv, axis=1)
+            )
+
+            fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+            sns.heatmap(sim_role, cmap="Blues", ax=axes[0])
+            plt.title("Role-token vs Original KV (Cosine Similarity, Full Colors)")
+            plt.show()
+
+        else:
+            raise ValueError("method 必须是 'tsne' 或 'heatmap'")
+        if save_path:
+            file_name = f"{which}.png"
+            file_path = os.path.join(save_path, file_name)
+            plt.savefig(file_path, format="png")
 
 def freeze_encoder(model):
     for name, param in model.named_parameters():
