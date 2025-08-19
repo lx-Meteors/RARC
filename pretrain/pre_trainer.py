@@ -1,6 +1,9 @@
 import random
 import sys
 import os
+
+import numpy as np
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from path_config import BASE_PATH
 sys.path.append(BASE_PATH)
@@ -35,6 +38,9 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+torch.manual_seed(42)
+np.random.seed(42)
+random.seed(42)
 
 
 def parse_args():

@@ -7,3 +7,7 @@
 **/ablation_experiment/
 **/analysis_experiment/
 ./pretrain/log.txt
+
+**/experiment_5x_8gpu/
+**/experiment_15x_8gpu/
+**/experiment_51x_8gpu/
