@@ -1,5 +1,9 @@
+import random
 import sys
 import os
+
+import numpy as np
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "transformers", "src"))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from path_config import BASE_PATH
@@ -33,7 +37,9 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-
+torch.manual_seed(12345)
+np.random.seed(12345)
+random.seed(12345)
 
 def parse_args():
     parser = argparse.ArgumentParser()
