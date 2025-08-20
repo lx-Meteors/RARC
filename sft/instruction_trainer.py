@@ -36,9 +36,9 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-torch.manual_seed(42)
-np.random.seed(42)
-random.seed(42)
+torch.manual_seed(12345)
+np.random.seed(12345)
+random.seed(12345)
 
 
 def parse_args():
