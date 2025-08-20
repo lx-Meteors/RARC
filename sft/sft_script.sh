@@ -28,8 +28,8 @@
 python instruction_prepare_data.py --work_dir  '../experiment/main_experiment/RARC_1B'
 CUDA_VISIBLE_DEVICES=1,2,3,4 nohup python ./instruction_trainer.py --work_dir   '../experiment/analysis_experiment/RARC_1B_MultiChunk' --port 14527 > train.log 2>&1 &
 python ./instruction_evaluator.py --work_dir   '../experiment/analysis_experiment/RARC_1B_MultiChunk' --batch_size 1
-python ../util/evaluate_ood.py --work_dir '../experiment/main_experiment_170x/RARC_1B_MultiChunk'
-python ../util/evaluate_iid.py --work_dir '../experiment/main_experiment_170x/500x_1B_EPL_MultiChunk'
+python ../util/evaluate_ood.py --work_dir '../experiment/experiment_5x_8gpu/RARC'
+python ../util/evaluate_iid.py --work_dir '../experiment/experiment_5x_8gpu/RARC'
 
 
 # 后台启动方式
