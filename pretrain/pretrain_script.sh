@@ -34,4 +34,4 @@ python ./instruction_evaluator.py --work_dir   '../experiment/experiment_5x_8gpu
 # 后台启动方式
 #nohup python ./pre_trainer.py --work_dir '../experiment/icae_15x_upl_sure' --port 14571 > train.log 2>&1 &
 # tail -f bash.log
-# tail -f RARC_1B_MultiChunk.log
+# tail -f pre_evaluator.log
