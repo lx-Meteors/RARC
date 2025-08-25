@@ -83,7 +83,16 @@ def map_compressed_words_to_blocks_indices(tokenizer, original_text, compressed_
 
         # 4. 转成 tensor
     block_indices_tensor = {k: torch.tensor(v, dtype=torch.long) for k, v in block_indices.items()}
-    return block_indices_tensor
+    lingua2_list = []
+
+    for tensor in block_indices_tensor.values():
+        # 在每个 tensor 末尾加 [128000]
+        tensor_with_sep = torch.cat([tensor, torch.tensor([128000], dtype=torch.long)])
+        lingua2_list.append(tensor_with_sep)
+    if len(lingua2_list) == 0:
+        lingua2_list.append(torch.tensor([128000], dtype=torch.long))
+    lingua2 = torch.cat(lingua2_list, dim=0)
+    return lingua2
 
     
 def get_ids(instruction_dataset_repo_name, examples_list, tokenizer, split):

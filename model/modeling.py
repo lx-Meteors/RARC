@@ -184,7 +184,7 @@ class CompressLLM(torch.nn.Module):
         all_encoder_hidden_states = []
         all_trimmed_past_key_values = []
 
-        lingua2_idx = inputs['lingua2']  # tensor
+        lingua2_idx = inputs['lingua2'].squeeze(0)  # tensor
         sep_indices = (lingua2_idx == torch.LongTensor([128000]).to(lingua2_idx.device)).nonzero(as_tuple=True)[0].cpu()
         parts = torch.tensor_split(lingua2_idx, sep_indices+1)
 
