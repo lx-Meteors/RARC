@@ -114,7 +114,7 @@ class Evaluator:
         loader = DataLoader(dataset, batch_size=None)
         
         model = get_model(training_config["model_id"], task_config, rank)
-        model = load_adapter(model, save_path_and_name=self.work_dir+'/instruction_adapter.pt', log=True)
+        # model = load_adapter(model, save_path_and_name=self.work_dir+'/instruction_adapter.pt', log=True)
         model.eval()
 
         info_list=[]
@@ -122,7 +122,7 @@ class Evaluator:
             for inputs in tqdm(loader,total=len(eval_examples)//self.batch_size):
                 inputs = {key:(value.to(rank) if value is not None else None) for key,value in inputs.items()}
                 # output = model(inputs=inputs)
-                generate_text = model.lm_inference(inputs)
+                generate_text = model.vanilla_llama_inference(inputs)
                 info_list.append({"generate_text": generate_text})
 
         with open(self.work_dir+f'/instruction_eval_info_list_{rank}.json', 'w', encoding='utf-8') as f:
@@ -133,9 +133,9 @@ class Evaluator:
                 
     def run(self, rank):
         # draw training loss
-        if rank==0:
-            # self.draw_loss()
-            self.draw_ema_loss(alpha=0.1)
+        # if rank==0:
+        #     # self.draw_loss()
+        #     self.draw_ema_loss(alpha=0.1)
         self.evaluate(rank)
 
 
@@ -202,7 +202,6 @@ def evaluate(rank, args, world_size, tokenizer):
 
 # Launch multi-process eval
 if __name__ == "__main__":
-    cc = SmoothingFunction()
     args = parse_args()
     world_size = torch.cuda.device_count()
 
