@@ -82,13 +82,21 @@ def map_compressed_words_to_blocks_indices(tokenizer, original_text, compressed_
 
         # 4. 转成 tensor
     block_indices_tensor = {k: torch.tensor(v, dtype=torch.long) for k, v in block_indices.items()}
-    return block_indices_tensor
+    lingua2_list = []
+    for tensor in block_indices_tensor.values():
+        # 在每个 tensor 末尾加 [128000]
+        tensor_with_sep = torch.cat([tensor, torch.tensor([128000], dtype=torch.long)])
+        lingua2_list.append(tensor_with_sep)
+    if len(lingua2_list) == 0:
+        lingua2_list.append(torch.tensor([128000], dtype=torch.long))
+    lingua2 = torch.cat(lingua2_list, dim=0)
+    return lingua2
 
 
 def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruction_dataset_repo, output_dir):
     model_name = model_id.split('/')[-1]
-    train_data_name = f"{output_dir}/train_" + model_name + "_" + str(samples_num) + f"samples_{min_len}-{max_len}len_lingua2.pt"
-    eval_data_name = f"{output_dir}/eval_" + model_name + "_" + str(samples_num) + f"samples_{min_len}-{max_len}len_lingua2.pt"
+    train_data_name = f"{output_dir}/train_" + model_name + "_" + str(samples_num) + f"samples_{min_len}-{max_len}len_lingua2_51x.pt"
+    eval_data_name = f"{output_dir}/eval_" + model_name + "_" + str(samples_num) + f"samples_{min_len}-{max_len}len_lingua2_51x.pt"
 
     if os.path.exists(train_data_name):
         print("loading data...")
@@ -118,7 +126,7 @@ def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruct
         lm_target = ids[last_start:] + [tokenizer.eos_token_id]
 
         org_text = tokenizer.decode(inputs, add_special_tokens=False)
-        compressed_chunk_text = llm_lingua.compress_prompt(org_text, rate=0.07)["compressed_prompt"]
+        compressed_chunk_text = llm_lingua.compress_prompt(org_text, rate=0.02, target_token=10)["compressed_prompt"]
         mem_real_idx = map_compressed_words_to_blocks_indices(tokenizer, org_text, compressed_chunk_text)
 
         inputs = torch.LongTensor(inputs)

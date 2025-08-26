@@ -127,7 +127,7 @@ def get_ids(instruction_dataset_repo_name, examples_list, tokenizer, split):
 
 
         org_text = tokenizer.decode(context_ids, add_special_tokens=False)
-        compressed_chunk_text = llm_lingua.compress_prompt(org_text, rate=0.07)["compressed_prompt"]
+        compressed_chunk_text = llm_lingua.compress_prompt(org_text, rate=0.02, target_token=10)["compressed_prompt"]
         mem_real_idx = map_compressed_words_to_blocks_indices(tokenizer, org_text, compressed_chunk_text)
 
 
@@ -163,8 +163,8 @@ def get_examples(model_id, instruction_dataset_repo, samples_num, min_len, max_l
     
     model_name = model_id.split('/')[-1]
     instruction_dataset_repo_name = instruction_dataset_repo.split('/')[-1]
-    train_data_name = f"output/{instruction_dataset_repo_name}_train_"+model_name+f"_{samples_num}samples_instruction_lingua2.pt"
-    eval_data_name = f"output/{instruction_dataset_repo_name}_eval_"+model_name+f"_{samples_num}samples_instruction_lingua2.pt"
+    train_data_name = f"output/{instruction_dataset_repo_name}_train_"+model_name+f"_{samples_num}samples_instruction_lingua2_51x.pt"
+    eval_data_name = f"output/{instruction_dataset_repo_name}_eval_"+model_name+f"_{samples_num}samples_instruction_lingua2_51x.pt"
 
     print(f"in:train_data_name:{train_data_name}")
     if os.path.exists(train_data_name):

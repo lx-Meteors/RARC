@@ -16,13 +16,7 @@ class CompressDataset(IterableDataset):
             input_ids.append(example["inputs"])
             ae_targets.append(example["ae_target"])
             lm_targets.append(example["lm_target"])
-            if len(example["lingua2"]) != 0:
-                for item in example["lingua2"]:
-                    lingua2.append(example["lingua2"][item])
-                    lingua2.append(torch.LongTensor([128000]))
-            else:
-                lingua2.append(torch.LongTensor([128000]))
-            lingua2 = torch.cat(lingua2, dim=0)
+            lingua2.append(example["lingua2"])
 
             if self.batch_size == len(input_ids):
                 yield {"input_ids":torch.stack(input_ids),
