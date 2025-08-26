@@ -202,7 +202,6 @@ def evaluate(rank, args, world_size, tokenizer):
 
 # Launch multi-process eval
 if __name__ == "__main__":
-    cc = SmoothingFunction()
     args = parse_args()
     world_size = torch.cuda.device_count()
 
