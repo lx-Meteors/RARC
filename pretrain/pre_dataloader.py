@@ -22,7 +22,7 @@ class CompressDataset(IterableDataset):
                 yield {"input_ids":torch.stack(input_ids),
                        "ae_targets":torch.stack(ae_targets),
                        "lm_targets":torch.stack(lm_targets),
-                       "lingua2":lingua2,}
+                       "lingua2":torch.stack(lingua2),}
                 input_ids = []
                 ae_targets = []
                 lm_targets = []

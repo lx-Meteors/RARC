@@ -95,8 +95,8 @@ def map_compressed_words_to_blocks_indices(tokenizer, original_text, compressed_
 
 def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruction_dataset_repo, output_dir):
     model_name = model_id.split('/')[-1]
-    train_data_name = f"{output_dir}/train_" + model_name + "_" + str(samples_num) + f"samples_{min_len}-{max_len}len_lingua2_51x.pt"
-    eval_data_name = f"{output_dir}/eval_" + model_name + "_" + str(samples_num) + f"samples_{min_len}-{max_len}len_lingua2_51x.pt"
+    train_data_name = f"{output_dir}/train_" + model_name + "_" + str(samples_num) + f"samples_{min_len}-{max_len}len_rarc_lingua2_51x.pt"
+    eval_data_name = f"{output_dir}/eval_" + model_name + "_" + str(samples_num) + f"samples_{min_len}-{max_len}len_rarc_lingua2_51x.pt"
 
     if os.path.exists(train_data_name):
         print("loading data...")
