@@ -126,7 +126,7 @@ def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruct
         lm_target = ids[last_start:] + [tokenizer.eos_token_id]
 
         org_text = tokenizer.decode(inputs, add_special_tokens=False)
-        compressed_chunk_text = llm_lingua.compress_prompt(org_text, rate=0.02, target_token=10)["compressed_prompt"]
+        compressed_chunk_text = llm_lingua.compress_prompt(org_text, rate=0.02)["compressed_prompt"]
         mem_real_idx = map_compressed_words_to_blocks_indices(tokenizer, org_text, compressed_chunk_text)
 
         inputs = torch.LongTensor(inputs)
