@@ -373,7 +373,7 @@ class CompressLLM(torch.nn.Module):
         generate_text = []
         past_key_values = None
         next_inputs_embeds = encode_inputs_embeds.clone()
-        for i in range(1024):
+        for i in range(512):
             # print(f"next_position_ids:{next_position_ids}")
             out = self.model(inputs_embeds=next_inputs_embeds,
                              past_key_values=past_key_values,
