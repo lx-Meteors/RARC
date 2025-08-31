@@ -31,7 +31,7 @@ class CompressLLM(torch.nn.Module):
         config = self.model.config
         self.vocab_size = config.vocab_size
         self.chunk_size = task_config["chunk_size"]
-        self.role_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((mem_size, config.hidden_size)),requires_grad=True)
+        self.role_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((1, config.hidden_size)),requires_grad=True)
         self.special_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((2, config.hidden_size)), requires_grad=True)
         self.compress_ratio = compress_ratio
         self.mem_size = mem_size
@@ -203,7 +203,8 @@ class CompressLLM(torch.nn.Module):
 
             # 添加role_token
             encode_inputs_embeds = inputs_embeds.clone()
-            role_embeds = (self.role_tokens[:current_mem_size,:]).unsqueeze(0).expand(bsz, current_mem_size, emb_size)
+            # 共享role-embedding
+            role_embeds = self.role_tokens.unsqueeze(0).repeat(bsz, current_mem_size, 1)
             mem_real_idx = mem_position_ids.squeeze(0) - 1 - start_idx
             encode_inputs_embeds.index_add_(1, mem_real_idx, role_embeds)
             # 添加双向注意力
