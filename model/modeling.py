@@ -205,6 +205,8 @@ class CompressLLM(torch.nn.Module):
             encode_inputs_embeds = inputs_embeds.clone()
             role_embeds = (self.role_tokens[:current_mem_size,:]).unsqueeze(0).expand(bsz, current_mem_size, emb_size)
             mem_real_idx = mem_position_ids.squeeze(0) - 1 - start_idx
+
+            mem_real_idx = torch.randperm(seq_len, device=mem_position_ids.device)[:current_mem_size]
             encode_inputs_embeds.index_add_(1, mem_real_idx, role_embeds)
             # 添加双向注意力
             attention_mask = self.build_attention_mask_full_bidirectional(seq_len).unsqueeze(0).unsqueeze(1).to(inputs_embeds.device).to(torch.bfloat16)
