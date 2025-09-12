@@ -76,7 +76,7 @@ class Evaluator:
             info_list=json.load(f)
 
         ae_loss_values = [-1 if 'ae_loss' not in entry['training_loss'] else entry['training_loss']["ae_loss"] for entry in info_list]
-        lm_loss_values = [entry['training_loss']["lm_loss"] for entry in info_list]
+        lm_loss_values = [-1 if 'lm_loss' not in entry['training_loss'] else entry['training_loss']["lm_loss"] for entry in info_list]
         step_values = [entry['steps'] for entry in info_list]
         lr_values = [entry['learning_rate'] for entry in info_list]
 
@@ -84,7 +84,8 @@ class Evaluator:
         plt.figure(figsize=(10, 5))
         if ae_loss_values[0] != -1:
             plt.plot(step_values, exponential_moving_average(ae_loss_values,alpha=alpha), label="ae_loss")
-        plt.plot(step_values, exponential_moving_average(lm_loss_values,alpha=alpha), label="lm_loss")
+        if lm_loss_values[0] != -1:
+            plt.plot(step_values, exponential_moving_average(lm_loss_values,alpha=alpha), label="lm_loss")
         plt.xlabel("step")
         plt.ylabel(f"loss(ema_alpha={alpha}")
         plt.title(f"{self.work_dir}_loss(ema_alpha={alpha}")
@@ -122,6 +123,8 @@ class Evaluator:
 
                 if "ae_loss" not in output["loss_info"]:
                     output["loss_info"]["ae_loss"]=-1
+                if "lm_loss" not in output["loss_info"]:
+                    output["loss_info"]["lm_loss"] = -1
                 info_list.append(output["loss_info"])
 
         with open(self.work_dir+f'/eval_info_list_{rank}.json', 'w', encoding='utf-8') as f:
