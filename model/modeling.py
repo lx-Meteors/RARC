@@ -217,7 +217,7 @@ class CompressLLM(torch.nn.Module):
             mem_real_idx = mem_position_ids.squeeze(0) - 1 - start_idx
             encode_inputs_embeds.index_add_(1, mem_real_idx, role_embeds)
             # 添加双向注意力
-            # attention_mask = self.build_attention_mask_full_bidirectional(seq_len).unsqueeze(0).unsqueeze(1).to(inputs_embeds.device).to(torch.bfloat16)
+            attention_mask = self.build_attention_mask_full_bidirectional(seq_len).unsqueeze(0).unsqueeze(1).to(inputs_embeds.device).to(torch.bfloat16)
 
             if compress_token_ids is None:
                 compress_token_ids = mem_position_ids
@@ -227,7 +227,7 @@ class CompressLLM(torch.nn.Module):
 
             if self.task_config["use_pe"]:
                 outputs = self.model(position_ids=position_ids, inputs_embeds=encode_inputs_embeds,
-                                     output_hidden_states=True, output_attentions=True)
+                                     output_hidden_states=True, output_attentions=True, attention_mask=attention_mask)
             else:
                 outputs = self.model(inputs_embeds=encode_inputs_embeds, output_hidden_states=True)
 
@@ -253,16 +253,16 @@ class CompressLLM(torch.nn.Module):
             all_trimmed_past_key_values.append(trimmed_past_key_values)
 
             # 画注意力图
-            # self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
+            self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
 
             # 画TSNE
             original_k = self.flatten_kv(past_key_values, -1, "key")
             role_k = self.flatten_kv(trimmed_past_key_values, -1, "key")
-            self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="heatmap", which="key", save_path="/mnt/zhaorunsong/lx/RARC/experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache")
+            self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="tsne", which="key", save_path="/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/RARC_wo_ae")
             original_v = self.flatten_kv(past_key_values, -1, "value")
             role_v = self.flatten_kv(trimmed_past_key_values, -1, "value")
-            self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="heatmap", which="value",
-                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/analysis_experiment/RARC_1B_MultiChunk_KVCache")
+            self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="tsne", which="value",
+                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/RARC_wo_ae")
             exit()
         # 获取并拼接hidden_state
         encoder_hidden_states = torch.cat(all_encoder_hidden_states, dim=2)
@@ -421,7 +421,7 @@ class CompressLLM(torch.nn.Module):
         return tuple(merged_past_key_values)
 
     def attn_analysis(self, outputs, chunk_input_ids, mem_real_idx):
-        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/main_experiment/RARC_1B_MultiChunk_CausalMask"
+        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/RARC_wo_ae"
         os.makedirs(os.path.dirname(save_dir), exist_ok=True)
         attentions = outputs.attentions
         mem_tokens = [f"[MEM{i}]" for i in range(len(mem_real_idx))]
@@ -450,7 +450,7 @@ class CompressLLM(torch.nn.Module):
             plt.savefig(file_path, format="png")
             print(f"Summed Attention map saved at: {file_path}")
             plt.close()  # 关闭当前图像，释放内存
-        exit()
+        # exit()
 
     def flatten_kv(self, past_key_values, layer_idx=0, which="value"):
         """
