@@ -253,7 +253,7 @@ class CompressLLM(torch.nn.Module):
             all_trimmed_past_key_values.append(trimmed_past_key_values)
 
             # 画注意力图
-            self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
+            # self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
 
             # 画TSNE
             original_k = self.flatten_kv(past_key_values, -1, "key")
@@ -447,7 +447,7 @@ class CompressLLM(torch.nn.Module):
             # 保存图像到本地
             file_name = f"attention_layer{layer_index + 1}_summed.png"
             file_path = os.path.join(save_dir, file_name)
-            plt.savefig(file_path, format="png")
+            plt.savefig(file_path, dpi=600, format="png", bbox_inches='tight')
             print(f"Summed Attention map saved at: {file_path}")
             plt.close()  # 关闭当前图像，释放内存
         # exit()
@@ -498,7 +498,7 @@ class CompressLLM(torch.nn.Module):
             # 可视化
             plt.figure(figsize=(8, 6))
             sns.scatterplot(x=X_embedded[:, 0], y=X_embedded[:, 1], hue=labels, palette="deep", alpha=0.7)
-            plt.title("t-SNE of KV Representations (Full Colors)")
+            # plt.title("t-SNE of KV Representations (Full Colors)")
             plt.legend()
             plt.show()
 
@@ -510,7 +510,7 @@ class CompressLLM(torch.nn.Module):
 
             fig, axes = plt.subplots(figsize=(12, 5))
             sns.heatmap(sim_role, cmap="Blues", ax=axes)
-            plt.title("Role-token vs Original KV (Cosine Similarity, Full Colors)")
+            # plt.title("Role-token vs Original KV (Cosine Similarity, Full Colors)")
             plt.show()
 
         else:
@@ -518,7 +518,7 @@ class CompressLLM(torch.nn.Module):
         if save_path:
             file_name = f"{method}-{which}.png"
             file_path = os.path.join(save_path, file_name)
-            plt.savefig(file_path, format="png")
+            plt.savefig(file_path, dpi=600, format="png", bbox_inches='tight')
 
 def freeze_encoder(model):
     for name, param in model.named_parameters():
