@@ -218,9 +218,9 @@ class CompressLLM(torch.nn.Module):
 
             if self.task_config["use_pe"]:
                 outputs = self.model(position_ids=encode_position_ids, inputs_embeds=encode_inputs_embeds,
-                                     output_hidden_states=True)
+                                     output_hidden_states=True, output_attentions=True)
             else:
-                outputs = self.model(inputs_embeds=encode_inputs_embeds, output_hidden_states=True)
+                outputs = self.model(inputs_embeds=encode_inputs_embeds, output_hidden_states=True, output_attentions=True)
 
             hidden_states = outputs.hidden_states[-1]
             # [B,mem_size,emb_size]
@@ -246,15 +246,18 @@ class CompressLLM(torch.nn.Module):
             )
             all_trimmed_past_key_values.append(trimmed_past_key_values)
 
+            # 画注意力图
+            self.attn_analysis(mem_size, outputs, chunk_input_ids)
+
             # 画TSNE
             original_k = self.flatten_kv(original_past_key_values, -1, "key")
             role_k = self.flatten_kv(trimmed_past_key_values, -1, "key")
-            self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="heatmap", which="key",
-                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/main_experiment/500x_DPL_1B_MultiChunk")
+            self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="tsne", which="key",
+                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/500xCompress")
             original_v = self.flatten_kv(original_past_key_values, -1, "value")
             role_v = self.flatten_kv(trimmed_past_key_values, -1, "value")
-            self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="heatmap", which="value",
-                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/main_experiment/500x_DPL_1B_MultiChunk")
+            self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="tsne", which="value",
+                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/500xCompress")
             exit()
         # 假设 all_trimmed_past_key_values 是列表，每个元素的结构为 tuple，每个 tuple 中存储了各层的 (key, value)
         # 例如：all_trimmed_past_key_values[i][j] = (layer_j_key_of_segment_i, layer_j_value_of_segment_i)
@@ -405,6 +408,36 @@ class CompressLLM(torch.nn.Module):
                 return generate_text
         return generate_text
 
+    def attn_analysis(self, mem_size, outputs, chunk_input_ids):
+        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/500xCompress_EPL"
+        os.makedirs(os.path.dirname(save_dir), exist_ok=True)
+        attentions = outputs.attentions
+        mem_tokens = [f"[MEM{i}]" for i in range(mem_size)]
+        input_text = self.tokenizer.convert_ids_to_tokens(chunk_input_ids.tolist()[0])
+        input_text.extend(mem_tokens)
+        for layer_index in range(len(attentions)):
+            # 选取当前层的注意力权重
+            attention = attentions[layer_index].squeeze(0)  # (num_heads, seq_len, seq_len)
+            # 计算所有注意力头的加和
+            total_attention = attention.sum(dim=0).to(torch.float32).cpu().numpy()  # (seq_len, seq_len)
+            # 绘制综合注意力热力图
+            plt.figure(figsize=(150, 150))
+            sns.heatmap(
+                total_attention,
+                xticklabels=input_text,
+                yticklabels=input_text,
+                cmap="Reds",  # 由浅粉色到深红色
+                square=True
+            )
+            # 旋转标签以避免重叠
+            plt.title(f"Summed Attention Map - Layer {layer_index + 1}")
+            # 保存图像到本地
+            file_name = f"attention_layer{layer_index + 1}_summed.png"
+            file_path = os.path.join(save_dir, file_name)
+            plt.savefig(file_path, format="png", bbox_inches='tight')
+            print(f"Summed Attention map saved at: {file_path}")
+            plt.close()  # 关闭当前图像，释放内存
+
     def build_attention_mask_full_bidirectional(self, num_input):
         """创建一个全零的注意力掩码，代表所有token之间都互相可见。"""
         total_len = num_input
@@ -457,7 +490,7 @@ class CompressLLM(torch.nn.Module):
             # 可视化
             plt.figure(figsize=(8, 6))
             sns.scatterplot(x=X_embedded[:, 0], y=X_embedded[:, 1], hue=labels, palette="deep", alpha=0.7)
-            plt.title("t-SNE of KV Representations (Full Colors)")
+            # plt.title("t-SNE of KV Representations (Full Colors)", fontsize=18, fontweight='bold')
             plt.legend()
             plt.show()
 
@@ -469,7 +502,7 @@ class CompressLLM(torch.nn.Module):
 
             fig, axes = plt.subplots(figsize=(12, 5))
             sns.heatmap(sim_role, cmap="Blues", ax=axes)
-            plt.title("Role-token vs Original KV (Cosine Similarity, Full Colors)")
+            # plt.title("Role-token vs Original KV (Cosine Similarity, Full Colors)", fontsize=18, fontweight='bold')
             plt.show()
 
         else:
@@ -477,7 +510,7 @@ class CompressLLM(torch.nn.Module):
         if save_path:
             file_name = f"{method}-{which}.png"
             file_path = os.path.join(save_path, file_name)
-            plt.savefig(file_path, format="png")
+            plt.savefig(file_path, format="png", bbox_inches='tight')
 
 def freeze_encoder(model):
     for name, param in model.named_parameters():
