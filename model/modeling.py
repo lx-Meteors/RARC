@@ -1,3 +1,4 @@
+import csv
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "transformers", "src"))
@@ -253,7 +254,7 @@ class CompressLLM(torch.nn.Module):
             all_trimmed_past_key_values.append(trimmed_past_key_values)
 
             # 画注意力图
-            # self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
+            self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
 
             # 画TSNE
             original_k = self.flatten_kv(past_key_values, -1, "key")
@@ -421,7 +422,7 @@ class CompressLLM(torch.nn.Module):
         return tuple(merged_past_key_values)
 
     def attn_analysis(self, outputs, chunk_input_ids, mem_real_idx):
-        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/main_experiment/RARC_1B_MultiChunk_CausalMask"
+        save_dir = "../experiment/experiment_5x_8gpu/RARC_wo_ae"
         os.makedirs(os.path.dirname(save_dir), exist_ok=True)
         attentions = outputs.attentions
         mem_tokens = [f"[MEM{i}]" for i in range(len(mem_real_idx))]
@@ -433,6 +434,19 @@ class CompressLLM(torch.nn.Module):
             attention = attentions[layer_index].squeeze(0)  # (num_heads, seq_len, seq_len)
             # 计算所有注意力头的加和
             total_attention = attention.sum(dim=0).to(torch.float32).cpu().numpy()  # (seq_len, seq_len)
+            attn_to_first = total_attention[:, 0]  # 所有 token 对第一个 token 的注意力
+
+            sink_save_path = os.path.join(save_dir, "sink_mem_tokens.csv")
+            # 取出压缩 token 的 sink 值
+            mem_sink_values = [attn_to_first[idx] for idx in mem_real_idx]
+            mean_sink = float(np.mean(mem_sink_values))
+            with open(sink_save_path, "a", newline="") as f:
+                writer = csv.writer(f)
+                if layer_index == 0:
+                    writer.writerow(["Layer", "MemToken", "TokenIdx", "AttentionToFirst", "LayerMeanSink"])
+                for i, idx in enumerate(mem_real_idx):
+                    writer.writerow([layer_index + 1, f"[MEM{i}]", idx, attn_to_first[idx], mean_sink])
+
             # 绘制综合注意力热力图
             plt.figure(figsize=(150, 150))
             sns.heatmap(
