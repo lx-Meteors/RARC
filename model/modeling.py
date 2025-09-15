@@ -1,3 +1,4 @@
+import csv
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "transformers", "src"))
@@ -421,7 +422,7 @@ class CompressLLM(torch.nn.Module):
         return tuple(merged_past_key_values)
 
     def attn_analysis(self, outputs, chunk_input_ids, mem_real_idx):
-        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/main_experiment/RARC_1B_MultiChunk_CausalMask"
+        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/RARC_wo_ae"
         os.makedirs(os.path.dirname(save_dir), exist_ok=True)
         attentions = outputs.attentions
         mem_tokens = [f"[MEM{i}]" for i in range(len(mem_real_idx))]
@@ -460,7 +461,7 @@ class CompressLLM(torch.nn.Module):
             # 保存图像到本地
             file_name = f"attention_layer{layer_index + 1}_summed.png"
             file_path = os.path.join(save_dir, file_name)
-            plt.savefig(file_path, dpi=600, format="png", bbox_inches='tight')
+            plt.savefig(file_path, format="png", bbox_inches='tight')
             print(f"Summed Attention map saved at: {file_path}")
             plt.close()  # 关闭当前图像，释放内存
         exit()
