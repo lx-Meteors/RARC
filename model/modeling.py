@@ -409,7 +409,7 @@ class CompressLLM(torch.nn.Module):
         return generate_text
 
     def attn_analysis(self, mem_size, outputs, chunk_input_ids):
-        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/500xCompress_EPL"
+        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/500xCompress"
         os.makedirs(os.path.dirname(save_dir), exist_ok=True)
         attentions = outputs.attentions
         mem_tokens = [f"[MEM{i}]" for i in range(mem_size)]
@@ -434,7 +434,7 @@ class CompressLLM(torch.nn.Module):
             # 保存图像到本地
             file_name = f"attention_layer{layer_index + 1}_summed.png"
             file_path = os.path.join(save_dir, file_name)
-            plt.savefig(file_path, dpi=600, format="png", bbox_inches='tight')
+            plt.savefig(file_path, format="png", bbox_inches='tight')
             print(f"Summed Attention map saved at: {file_path}")
             plt.close()  # 关闭当前图像，释放内存
 
