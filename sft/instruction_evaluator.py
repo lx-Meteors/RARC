@@ -114,7 +114,7 @@ class Evaluator:
         loader = DataLoader(dataset, batch_size=None)
         
         model = get_model(training_config["model_id"], task_config, rank)
-        # model = load_adapter(model, save_path_and_name=self.work_dir+'/instruction_adapter.pt', log=True)
+        model = load_adapter(model, save_path_and_name=self.work_dir+'/instruction_adapter.pt', log=True)
         model.eval()
 
         info_list=[]

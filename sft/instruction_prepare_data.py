@@ -73,7 +73,7 @@ def get_ids(instruction_dataset_repo_name, examples_list, tokenizer, split):
                        + tokenizer("\n### Answer:\n", add_special_tokens=False)["input_ids"]
         answer_ids = answer + [tokenizer.eos_token_id] # tokenizer("</s>", add_special_tokens=False)["input_ids"]
 
-        compressed_prompt = llm_lingua.compress_prompt(example["context"], rate=0.02, force_tokens=['\n', '?'])["compressed_prompt"]
+        compressed_prompt = llm_lingua.compress_prompt(example["context"], rate=0.2, force_tokens=['\n', '?'])["compressed_prompt"]
         context_ids = [tokenizer.bos_token_id] + \
                       tokenizer("### Context:\n", add_special_tokens=False)["input_ids"] + \
                       tokenizer(compressed_prompt, add_special_tokens=False)["input_ids"]
@@ -111,8 +111,8 @@ def get_examples(model_id, instruction_dataset_repo, samples_num, min_len, max_l
     model_name = model_id.split('/')[-1]
     model_name = "Llama-3.2-1B"
     instruction_dataset_repo_name = instruction_dataset_repo.split('/')[-1]
-    train_data_name = f"output/{instruction_dataset_repo_name}_train_"+model_name+f"_{samples_num}samples_instruction_lingua2_51x.pt"
-    eval_data_name = f"output/{instruction_dataset_repo_name}_eval_"+model_name+f"_{samples_num}samples_instruction_lingua2_51x.pt"
+    train_data_name = f"output/{instruction_dataset_repo_name}_train_"+model_name+f"_{samples_num}samples_instruction_lingua2_5x.pt"
+    eval_data_name = f"output/{instruction_dataset_repo_name}_eval_"+model_name+f"_{samples_num}samples_instruction_lingua2_5x.pt"
 
     print(f"in:train_data_name:{eval_data_name}")
     if os.path.exists(eval_data_name):

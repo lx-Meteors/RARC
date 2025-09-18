@@ -368,7 +368,10 @@ class CompressLLM(torch.nn.Module):
     def vanilla_llama_inference(self, inputs):
         inputs_embeds = self.model.model.embed_tokens(inputs["input_ids"])
         lm_target_emb = self.model.model.embed_tokens(inputs['lm_targets'])
-        encode_inputs_embeds = torch.cat([inputs_embeds, lm_target_emb], dim=1)
+
+        bsz, seq_len, emb_size = inputs_embeds.size()
+        expand_lm_token = self.special_tokens[1:2].unsqueeze(0).expand(bsz, 1, emb_size)
+        encode_inputs_embeds = torch.cat([inputs_embeds, expand_lm_token, lm_target_emb], dim=1)
 
         generate_text = []
         past_key_values = None
