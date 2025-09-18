@@ -1,4 +1,4 @@
 
-# this is the ICAE branch
+# this is the Instruct branch
 import os
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

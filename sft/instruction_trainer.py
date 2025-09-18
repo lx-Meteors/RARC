@@ -83,7 +83,7 @@ def train(rank, args, world_size):
 
     # Instantiate the model and move it to the corresponding GPU
     model = get_model(training_config["model_id"], task_config, rank)
-    model = load_adapter(model, save_path_and_name=args.work_dir+'/output/adapter.pt', log=False)
+    # model = load_adapter(model, save_path_and_name=args.work_dir+'/output/adapter.pt', log=False)
 
     # check non-frozen parameters
     if rank == 0:

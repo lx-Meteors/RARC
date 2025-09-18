@@ -122,7 +122,7 @@ class Evaluator:
             for inputs in tqdm(loader,total=len(eval_examples)//self.batch_size):
                 inputs = {key:(value.to(rank) if value is not None else None) for key,value in inputs.items()}
                 # output = model(inputs=inputs)
-                generate_text = model.lm_inference(inputs)
+                generate_text = model.vanilla_llama_inference(inputs)
                 info_list.append({"generate_text": generate_text})
 
         with open(self.work_dir+f'/instruction_eval_info_list_{rank}.json', 'w', encoding='utf-8') as f:
