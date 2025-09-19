@@ -420,7 +420,7 @@ def get_model_for_compress(model_id, task_config, rank):
     # freeze all the model except mem tokens and special tokens
     freeze_encoder(model)
     # only add lora to encoder, don't add lora to model.decoder
-    # add_compress_lora(model.model, task_config)
+    add_compress_lora(model.model, task_config)
     return model
 
 def get_model(model_id, task_config, rank):
