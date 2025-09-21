@@ -248,6 +248,8 @@ class CompressLLM(torch.nn.Module):
 
             # 画注意力图
             # self.attn_analysis(mem_size, outputs, chunk_input_ids)
+            mem_real_idx = torch.arange(seq_len, seq_len + mem_size)
+            self.attn_analysis_stacked_for_paper(outputs, chunk_input_ids, mem_real_idx)
 
             # 画TSNE
             original_k = self.flatten_kv(original_past_key_values, -1, "key")
@@ -437,6 +439,95 @@ class CompressLLM(torch.nn.Module):
             plt.savefig(file_path, format="png", bbox_inches='tight')
             print(f"Summed Attention map saved at: {file_path}")
             plt.close()  # 关闭当前图像，释放内存
+
+    def attn_analysis_stacked_for_paper(self, outputs, chunk_input_ids, mem_real_idx):
+        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/experiment_15x_8gpu/500xCompress_EPL"
+        os.makedirs(save_dir, exist_ok=True)
+
+        attentions = outputs.attentions
+        num_layers = len(attentions)
+
+        # 找到压缩 token 的索引和名称
+        mem_real_idx_cpu = mem_real_idx.cpu()
+        mem_tokens = [f"[MEM{i}]" for i in range(len(mem_real_idx_cpu))]
+        input_text = self.tokenizer.convert_ids_to_tokens(chunk_input_ids.tolist()[0])
+
+        # 选择需要可视化的层级
+        selected_layers_indices = [num_layers - 1]
+        selected_layer_names = [
+            f"Layer {i + 1}" for i in selected_layers_indices
+        ]
+
+        # 获取所有选定层的注意力矩阵并找到最大值，用于统一颜色条
+        all_layer_attentions = []
+        max_attention_value = 0
+        for layer_index in selected_layers_indices:
+            attention = attentions[layer_index].squeeze(0).sum(dim=0).to(torch.float32).cpu().numpy()
+            mem_attention_matrix = attention[np.ix_(mem_real_idx_cpu, range( chunk_input_ids.shape[1] ))]
+            all_layer_attentions.append(mem_attention_matrix)
+            max_attention_value = max(max_attention_value, mem_attention_matrix.max())
+
+        # 绘制堆叠式长图
+        # 调整画布大小以适应垂直堆叠
+        plt.style.use('seaborn-v0_8-white')
+        fig, axes = plt.subplots(
+            nrows=len(selected_layers_indices),
+            ncols=1,
+            figsize=(20, 5 * len(selected_layers_indices)),
+            gridspec_kw={'hspace': 0.15}  # 调整子图间距
+        )
+
+        # 如果只有一层，subplots 不会返回数组
+        if len(selected_layers_indices) == 1:
+            axes = [axes]
+
+        # 为每个选定的层绘制子图
+        for i, ax in enumerate(axes):
+            compressed_attention = all_layer_attentions[i]
+
+            sns.heatmap(
+                compressed_attention,
+                ax=ax,
+                cmap="Reds",
+                cbar=False,  # 不显示单个颜色条
+                square=False
+            )
+
+            # 设置 x 轴为原始 token 下标
+            ax.set_xticks((np.arange(0, len(input_text), 5))+0.5)  # 每隔5个显示一次
+            # ax.set_xticklabels(np.arange(0, len(input_text), 5), rotation=90, fontsize=4)
+            ax.set_xticklabels([f"{i}-" for i in np.arange(0, len(input_text), 5)],
+                               rotation=90, fontsize=8)
+
+            # 设置 y 轴为压缩 token 对应的原始下标
+            ax.set_yticks(np.arange(len(mem_real_idx_cpu)) + 0.5)  # 每个压缩 token
+            # ax.set_yticklabels(mem_real_idx_cpu.numpy(), rotation=0, fontsize=4)
+            ax.set_yticklabels([f"{i}-" for i in (mem_real_idx_cpu.numpy())],
+                               rotation=0, fontsize=4)
+            # ax.set_title(f"Attention Map - {selected_layer_names[i]}", fontsize=16)
+            # 确保除了最底下的子图，其他子图不显示 x 轴标签
+            ax.tick_params(axis="x", pad=-1)
+            ax.tick_params(axis="y", pad=-1)
+            if i < len(selected_layers_indices) - 1:
+                ax.set_xlabel("")
+                ax.set_xticklabels([])
+
+        # 添加一个共同的颜色条
+        fig.subplots_adjust(right=0.9)
+        cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
+        sm = plt.cm.ScalarMappable(cmap="Reds", norm=plt.Normalize(vmin=0, vmax=max_attention_value))
+        sm.set_array([])
+        fig.colorbar(sm, cax=cbar_ax)
+
+        # plt.suptitle("Stacked Compressed Token Attention Maps", fontsize=20, y=1.0)
+        plt.tight_layout(rect=[0, 0, 0.9, 1])
+
+        file_path = os.path.join(save_dir, "attention_stacked_for_paper.png")
+        plt.savefig(file_path, format="png", bbox_inches='tight', dpi=300)
+        print(f"Stacked Attention map saved at: {file_path}")
+        plt.close()
+
+        exit()
 
     def build_attention_mask_full_bidirectional(self, num_input):
         """创建一个全零的注意力掩码，代表所有token之间都互相可见。"""
