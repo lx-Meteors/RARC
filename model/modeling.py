@@ -254,13 +254,20 @@ class CompressLLM(torch.nn.Module):
             all_trimmed_past_key_values.append(trimmed_past_key_values)
 
             # 画注意力图
-            self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
+            # self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
+            self.attn_analysis_stacked_for_paper(outputs, chunk_input_ids, mem_real_idx)
 
             # 画TSNE
-            original_k = self.flatten_kv(past_key_values, -1, "key")
+            # 获取所有token下标
+            all_indices = np.arange(past_key_values[0][0].shape[2])  # shape: (bs, heads, seq_len, dim)
+            # 去掉 mem_real_idx 部分
+            non_mem_idx = np.setdiff1d(all_indices, mem_real_idx.cpu().numpy())
+            # 只保留非压缩部分
+            original_k = self.flatten_kv(past_key_values, -1, "key", indices=non_mem_idx)
+
             role_k = self.flatten_kv(trimmed_past_key_values, -1, "key")
             self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="tsne", which="key", save_path="/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/RARC_wo_ae")
-            original_v = self.flatten_kv(past_key_values, -1, "value")
+            original_v = self.flatten_kv(past_key_values, -1, "value", indices=non_mem_idx)
             role_v = self.flatten_kv(trimmed_past_key_values, -1, "value")
             self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="tsne", which="value",
                                          save_path="/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/RARC_wo_ae")
@@ -466,24 +473,117 @@ class CompressLLM(torch.nn.Module):
             plt.close()  # 关闭当前图像，释放内存
         exit()
 
-    def flatten_kv(self, past_key_values, layer_idx=0, which="value"):
+    def attn_analysis_stacked_for_paper(self, outputs, chunk_input_ids, mem_real_idx):
+        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/RARC_wo_ae"
+        os.makedirs(save_dir, exist_ok=True)
+
+        attentions = outputs.attentions
+        num_layers = len(attentions)
+
+        # 找到压缩 token 的索引和名称
+        mem_real_idx_cpu = mem_real_idx.cpu()
+        mem_tokens = [f"[MEM{i}]" for i in range(len(mem_real_idx_cpu))]
+        input_text = self.tokenizer.convert_ids_to_tokens(chunk_input_ids.tolist()[0])
+
+        # 选择需要可视化的层级
+        selected_layers_indices = [num_layers - 1]
+        selected_layer_names = [
+            f"Layer {i + 1}" for i in selected_layers_indices
+        ]
+
+        # 获取所有选定层的注意力矩阵并找到最大值，用于统一颜色条
+        all_layer_attentions = []
+        max_attention_value = 0
+        for layer_index in selected_layers_indices:
+            attention = attentions[layer_index].squeeze(0).sum(dim=0).to(torch.float32).cpu().numpy()
+            mem_attention_matrix = attention[np.ix_(mem_real_idx_cpu, range(attention.shape[1]))]
+            all_layer_attentions.append(mem_attention_matrix)
+            max_attention_value = max(max_attention_value, mem_attention_matrix.max())
+
+        # 绘制堆叠式长图
+        # 调整画布大小以适应垂直堆叠
+        plt.style.use('seaborn-v0_8-white')
+        fig, axes = plt.subplots(
+            nrows=len(selected_layers_indices),
+            ncols=1,
+            figsize=(20, 5 * len(selected_layers_indices)),
+            gridspec_kw={'hspace': 0.15}  # 调整子图间距
+        )
+
+        # 如果只有一层，subplots 不会返回数组
+        if len(selected_layers_indices) == 1:
+            axes = [axes]
+
+        # 为每个选定的层绘制子图
+        for i, ax in enumerate(axes):
+            compressed_attention = all_layer_attentions[i]
+
+            sns.heatmap(
+                compressed_attention,
+                ax=ax,
+                cmap="Reds",
+                cbar=False,  # 不显示单个颜色条
+                square=False
+            )
+
+            # 设置 x 轴为原始 token 下标
+            ax.set_xticks((np.arange(0, len(input_text), 5))+0.5)  # 每隔5个显示一次
+            # ax.set_xticklabels(np.arange(0, len(input_text), 5), rotation=90, fontsize=4)
+            ax.set_xticklabels([f"{i}-" for i in np.arange(0, len(input_text), 5)],
+                               rotation=90, fontsize=8)
+
+            # 设置 y 轴为压缩 token 对应的原始下标
+            ax.set_yticks(np.arange(len(mem_real_idx_cpu)) + 0.5)  # 每个压缩 token
+            # ax.set_yticklabels(mem_real_idx_cpu.numpy(), rotation=0, fontsize=4)
+            ax.set_yticklabels([f"{i}-" for i in (mem_real_idx_cpu.numpy())],
+                               rotation=0, fontsize=4)
+            # ax.set_title(f"Attention Map - {selected_layer_names[i]}", fontsize=16)
+            # 确保除了最底下的子图，其他子图不显示 x 轴标签
+            ax.tick_params(axis="x", pad=-1)
+            ax.tick_params(axis="y", pad=-1)
+            if i < len(selected_layers_indices) - 1:
+                ax.set_xlabel("")
+                ax.set_xticklabels([])
+
+        # 添加一个共同的颜色条
+        fig.subplots_adjust(right=0.9)
+        cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
+        sm = plt.cm.ScalarMappable(cmap="Reds", norm=plt.Normalize(vmin=0, vmax=max_attention_value))
+        sm.set_array([])
+        fig.colorbar(sm, cax=cbar_ax)
+
+        # plt.suptitle("Stacked Compressed Token Attention Maps", fontsize=20, y=1.0)
+        plt.tight_layout(rect=[0, 0, 0.9, 1])
+
+        file_path = os.path.join(save_dir, "attention_stacked_for_paper.png")
+        plt.savefig(file_path, format="png", bbox_inches='tight', dpi=300)
+        print(f"Stacked Attention map saved at: {file_path}")
+        plt.close()
+
+        exit()
+
+    def flatten_kv(self, past_key_values, layer_idx=0, which="value", indices=None):
         """
         把某一层的 KV 压平成 [seq_len, hidden_dim]，方便可视化
         Args:
             past_key_values: HuggingFace 输出的 past_key_values
             layer_idx: 选择第几层
             which: "key" 或 "value"
+            indices: list/ndarray，指定要保留的 token 下标。如果为 None，保留全部。
         """
         key, value = past_key_values[layer_idx]  # [B, H, T, D]
-        if which == "key":
-            x = key
-        else:
-            x = value
+        x = key if which == "key" else value
 
         # 假设 batch=1，展平 head
         x = x[0]  # -> [num_heads, seq_len, head_dim]
         H, T, D = x.shape
-        x = x.permute(1, 0, 2).reshape(T, H * D)  # -> [seq_len, hidden_dim]
+
+        # 选择 indices
+        if indices is not None:
+            x = x[:, indices, :]  # 只保留指定位置的 token
+
+        # 展平 head
+        x = x.permute(1, 0, 2).reshape(x.shape[1], H * D)  # -> [len(indices), hidden_dim]
         return x
 
     def visualize_kv_similarity(self, original_kv, role_kv, method="tsne", which="key", save_path=""):
@@ -504,7 +604,7 @@ class CompressLLM(torch.nn.Module):
             # 拼接
             X = np.concatenate([original_kv, role_kv], axis=0)
             labels = (["Original"] * len(original_kv) +
-                      ["Role-token"] * len(role_kv))
+                      ["Anchor-Token"] * len(role_kv))
 
             # t-SNE降维
             X_embedded = TSNE(n_components=2, random_state=42, perplexity=30).fit_transform(X)
@@ -513,6 +613,7 @@ class CompressLLM(torch.nn.Module):
             plt.figure(figsize=(8, 6))
             sns.scatterplot(x=X_embedded[:, 0], y=X_embedded[:, 1], hue=labels, palette="deep", alpha=0.7)
             # plt.title("t-SNE of KV Representations (Full Colors)")
+            # plt.legend(title="", fontsize=16, markerscale=1.5)
             plt.legend()
             plt.show()
 
