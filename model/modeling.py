@@ -486,7 +486,7 @@ class CompressLLM(torch.nn.Module):
         input_text = self.tokenizer.convert_ids_to_tokens(chunk_input_ids.tolist()[0])
 
         # 选择需要可视化的层级
-        selected_layers_indices = [num_layers - 1]
+        selected_layers_indices = [0, 9, num_layers - 1]
         selected_layer_names = [
             f"Layer {i + 1}" for i in selected_layers_indices
         ]
