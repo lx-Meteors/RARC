@@ -249,17 +249,17 @@ class CompressLLM(torch.nn.Module):
             # 画注意力图
             # self.attn_analysis(mem_size, outputs, chunk_input_ids)
             mem_real_idx = torch.arange(seq_len, seq_len + mem_size)
-            self.attn_analysis_stacked_for_paper(outputs, chunk_input_ids, mem_real_idx)
+            # self.attn_analysis_stacked_for_paper(outputs, chunk_input_ids, mem_real_idx)
 
             # 画TSNE
             original_k = self.flatten_kv(original_past_key_values, -1, "key")
             role_k = self.flatten_kv(trimmed_past_key_values, -1, "key")
             self.visualize_kv_similarity(original_kv=original_k, role_kv=role_k, method="tsne", which="key",
-                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/500xCompress_EPL")
+                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/500xCompress")
             original_v = self.flatten_kv(original_past_key_values, -1, "value")
             role_v = self.flatten_kv(trimmed_past_key_values, -1, "value")
             self.visualize_kv_similarity(original_kv=original_v, role_kv=role_v, method="tsne", which="value",
-                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/500xCompress_EPL")
+                                         save_path="/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/500xCompress")
             exit()
         # 假设 all_trimmed_past_key_values 是列表，每个元素的结构为 tuple，每个 tuple 中存储了各层的 (key, value)
         # 例如：all_trimmed_past_key_values[i][j] = (layer_j_key_of_segment_i, layer_j_value_of_segment_i)
@@ -463,7 +463,7 @@ class CompressLLM(torch.nn.Module):
         max_attention_value = 0
         for layer_index in selected_layers_indices:
             attention = attentions[layer_index].squeeze(0).sum(dim=0).to(torch.float32).cpu().numpy()
-            mem_attention_matrix = attention[np.ix_(mem_real_idx_cpu, range( chunk_input_ids.shape[1] ))]
+            mem_attention_matrix = attention[np.ix_(mem_real_idx_cpu, range( chunk_input_ids.shape[1]+len(mem_real_idx_cpu) ))]
             all_layer_attentions.append(mem_attention_matrix)
             max_attention_value = max(max_attention_value, mem_attention_matrix.max())
 
@@ -572,8 +572,8 @@ class CompressLLM(torch.nn.Module):
         if method == "tsne":
             # 拼接
             X = np.concatenate([original_kv, role_kv], axis=0)
-            labels = (["Original"] * len(original_kv) +
-                      ["Compress-token"] * len(role_kv))
+            labels = (["Context Token"] * len(original_kv) +
+                      ["Compression Token"] * len(role_kv))
 
             # t-SNE降维
             X_embedded = TSNE(n_components=2, random_state=42, perplexity=30).fit_transform(X)
@@ -582,7 +582,7 @@ class CompressLLM(torch.nn.Module):
             plt.figure(figsize=(8, 6))
             sns.scatterplot(x=X_embedded[:, 0], y=X_embedded[:, 1], hue=labels, palette="deep", alpha=0.7)
             # plt.title("t-SNE of KV Representations (Full Colors)", fontsize=18, fontweight='bold')
-            plt.legend()
+            plt.legend(fontsize=10, loc='upper left')
             plt.show()
 
         elif method == "heatmap":
