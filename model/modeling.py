@@ -1,3 +1,4 @@
+import csv
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -34,7 +35,7 @@ class CompressLLM(torch.nn.Module):
         config = self.model.config
         self.vocab_size = config.vocab_size
         self.chunk_size = task_config["chunk_size"]
-        self.role_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((mem_size, config.hidden_size)),requires_grad=True)
+        self.role_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((1, config.hidden_size)),requires_grad=True)
         self.special_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((2, config.hidden_size)), requires_grad=True)
         self.compress_ratio = compress_ratio
         self.mem_size = mem_size
@@ -188,7 +189,6 @@ class CompressLLM(torch.nn.Module):
         all_trimmed_past_key_values = []
 
         lingua2_idx = inputs['lingua2'].squeeze(0)  # tensor
-        print("lingua2:::", lingua2_idx)
         sep_indices = (lingua2_idx == torch.LongTensor([128000]).to(lingua2_idx.device)).nonzero(as_tuple=True)[0].cpu()
         parts = torch.tensor_split(lingua2_idx, sep_indices+1)
 
@@ -212,7 +212,8 @@ class CompressLLM(torch.nn.Module):
 
             # 添加role_token
             encode_inputs_embeds = inputs_embeds.clone()
-            role_embeds = (self.role_tokens[:current_mem_size,:]).unsqueeze(0).expand(bsz, current_mem_size, emb_size)
+            # role_embeds = (self.role_tokens[:current_mem_size,:]).unsqueeze(0).expand(bsz, current_mem_size, emb_size)
+            role_embeds = self.role_tokens.unsqueeze(0).repeat(bsz, current_mem_size, 1)
             mem_real_idx = mem_position_ids.squeeze(0) - 1 - start_idx
 
             # lingua2选择
@@ -260,7 +261,7 @@ class CompressLLM(torch.nn.Module):
                 # 将新的 mem_hidden 拼接到 compress_token
                 compress_token = torch.cat((compress_token, mem_hidden), dim=1)
 
-            self.attn_analysis_stacked_for_paper(outputs, chunk_input_ids, mem_real_idx)
+            self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
             # 获取encoder_hidden_state
             chunk_encoder_hidden_states  = torch.stack([layer[:, mem_real_idx, :] for layer in outputs.hidden_states],dim=0)  # [num_layers, B, self.mem_size, D]
             all_encoder_hidden_states.append(chunk_encoder_hidden_states)
@@ -419,8 +420,53 @@ class CompressLLM(torch.nn.Module):
 
         return tuple(merged_past_key_values)
 
+    def attn_analysis(self, outputs, chunk_input_ids, mem_real_idx):
+        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/RARC_wo_ae_lingua2_share_role"
+        os.makedirs(os.path.dirname(save_dir), exist_ok=True)
+        attentions = outputs.attentions
+        mem_tokens = [f"[MEM{i}]" for i in range(len(mem_real_idx))]
+        input_text = self.tokenizer.convert_ids_to_tokens(chunk_input_ids.tolist()[0])
+        for i, idx in enumerate(mem_real_idx):
+            input_text[idx] = mem_tokens[i]
+        for layer_index in range(len(attentions)):
+            # 选取当前层的注意力权重
+            attention = attentions[layer_index].squeeze(0)  # (num_heads, seq_len, seq_len)
+            # 计算所有注意力头的加和
+            total_attention = attention.sum(dim=0).to(torch.float32).cpu().numpy()  # (seq_len, seq_len)
+            attn_to_first = total_attention[:, 0]  # 所有 token 对第一个 token 的注意力
+
+            sink_save_path = os.path.join(save_dir, "sink_mem_tokens.csv")
+            # 取出压缩 token 的 sink 值
+            mem_sink_values = [attn_to_first[idx] for idx in mem_real_idx]
+            mean_sink = float(np.mean(mem_sink_values))
+            with open(sink_save_path, "a", newline="") as f:
+                writer = csv.writer(f)
+                if layer_index == 0:
+                    writer.writerow(["Layer", "MemToken", "TokenIdx", "AttentionToFirst", "LayerMeanSink"])
+                for i, idx in enumerate(mem_real_idx):
+                    writer.writerow([layer_index + 1, f"[MEM{i}]", idx, attn_to_first[idx], mean_sink])
+
+            # 绘制综合注意力热力图
+            plt.figure(figsize=(150, 150))
+            sns.heatmap(
+                total_attention,
+                xticklabels=input_text,
+                yticklabels=input_text,
+                cmap="Reds",  # 由浅粉色到深红色
+                square=True
+            )
+            # 旋转标签以避免重叠
+            plt.title(f"Summed Attention Map - Layer {layer_index + 1}")
+            # 保存图像到本地
+            file_name = f"attention_layer{layer_index + 1}_summed.png"
+            file_path = os.path.join(save_dir, file_name)
+            plt.savefig(file_path, format="png", bbox_inches='tight')
+            print(f"Summed Attention map saved at: {file_path}")
+            plt.close()  # 关闭当前图像，释放内存
+        exit()
+
     def attn_analysis_stacked_for_paper(self, outputs, chunk_input_ids, mem_real_idx):
-        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/RARC_wo_ae_lingua2"
+        save_dir = "/mnt/zhaorunsong/lx/RARC/experiment/experiment_5x_8gpu/RARC_lingua2_share_role"
         os.makedirs(save_dir, exist_ok=True)
 
         attentions = outputs.attentions
