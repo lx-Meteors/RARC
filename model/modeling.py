@@ -255,7 +255,7 @@ class CompressLLM(torch.nn.Module):
 
             # 画注意力图
             # self.attn_analysis(outputs, chunk_input_ids, mem_real_idx)
-            self.attn_analysis_stacked_for_paper(outputs, chunk_input_ids, mem_real_idx)
+            # self.attn_analysis_stacked_for_paper(outputs, chunk_input_ids, mem_real_idx)
 
             # 画TSNE
             # 获取所有token下标
@@ -603,8 +603,8 @@ class CompressLLM(torch.nn.Module):
         if method == "tsne":
             # 拼接
             X = np.concatenate([original_kv, role_kv], axis=0)
-            labels = (["Original"] * len(original_kv) +
-                      ["Anchor-Token"] * len(role_kv))
+            labels = (["Context Token"] * len(original_kv) +
+                      ["Anchor Token"] * len(role_kv))
 
             # t-SNE降维
             X_embedded = TSNE(n_components=2, random_state=42, perplexity=30).fit_transform(X)
@@ -614,7 +614,7 @@ class CompressLLM(torch.nn.Module):
             sns.scatterplot(x=X_embedded[:, 0], y=X_embedded[:, 1], hue=labels, palette="deep", alpha=0.7)
             # plt.title("t-SNE of KV Representations (Full Colors)")
             # plt.legend(title="", fontsize=16, markerscale=1.5)
-            plt.legend()
+            plt.legend(fontsize=10, loc='upper left')
             plt.show()
 
         elif method == "heatmap":
