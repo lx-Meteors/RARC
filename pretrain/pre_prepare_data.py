@@ -44,7 +44,7 @@ def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruct
 
     if os.path.exists(train_data_name):
         print("loading data...")
-        return torch.load(eval_data_name), torch.load(eval_data_name)
+        return torch.load(train_data_name), torch.load(eval_data_name)
     print(f"preparing data :train_data_name:{train_data_name}")
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
