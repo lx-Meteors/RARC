@@ -41,8 +41,8 @@ class CompressLLM(torch.nn.Module):
         config = self.model.config
         self.vocab_size = config.vocab_size
         self.chunk_size = task_config["chunk_size"]
-        self.mem_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((mem_size, config.hidden_size)),
-                                       requires_grad=True)
+        self.role_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((mem_size, config.hidden_size)),
+                                        requires_grad=True)
         self.special_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((2, config.hidden_size)),
                                            requires_grad=True)
         self.compress_ratio = compress_ratio
@@ -50,7 +50,7 @@ class CompressLLM(torch.nn.Module):
 
         mean = torch.mean(self.model.model.embed_tokens.weight).item()
         std = torch.std(self.model.model.embed_tokens.weight).item()
-        nn.init.normal_(self.mem_tokens, mean=mean, std=std)
+        nn.init.normal_(self.role_tokens, mean=0.0, std=0.02)
         nn.init.normal_(self.special_tokens, mean=mean, std=std)
 
     def forward(self, inputs):
@@ -195,11 +195,19 @@ class CompressLLM(torch.nn.Module):
             #################################不需要截断##############################################
             # 为了适配最后一个片段不足510
             mem_size = mem_position_ids.size(1)
-            mem_tokens = self.mem_tokens[:mem_size, :]
-            expand_mem = mem_tokens.unsqueeze(0).expand(bsz, mem_size, emb_size)
+            role_embeds = (self.role_tokens[:mem_size, :]).unsqueeze(0).expand(bsz, mem_size, emb_size)
+
+            # 1️⃣ 获取压缩 token 的位置索引（减 1 对齐到 0-base）
+            mem_real_idx = mem_position_ids.squeeze(0) - 1  - start_idx
+            # 2️⃣ 根据位置选取对应的 token embedding
+            # 对于 batch 内相同索引，直接使用：
+            compress_embeds = inputs_embeds[:, mem_real_idx, :]
+            encode_inputs_embeds = torch.cat([inputs_embeds, compress_embeds], dim=1)
+            encode_inputs_embeds[:, -mem_size:, :] += role_embeds
+
             ########################################################################################
 
-            encode_inputs_embeds = torch.cat([inputs_embeds, expand_mem], dim=1)
+            # encode_inputs_embeds = torch.cat([inputs_embeds, expand_mem], dim=1)
 
             # [1,seq_len]
             position_ids = torch.arange(start_idx + 1, end_idx + 1, device=inputs_embeds.device).unsqueeze(0)
@@ -207,8 +215,8 @@ class CompressLLM(torch.nn.Module):
             encode_position_ids = torch.cat([position_ids, mem_position_ids], dim=1)
             # print(f"encode_position_ids:{encode_position_ids}")
             # 制作双向注意力
-            # total_input_len = encode_inputs_embeds.size(1)
-            # attention_mask = self.build_attention_mask_full_bidirectional(total_input_len).unsqueeze(0).unsqueeze(1).to(inputs_embeds.device).to(torch.bfloat16)
+            total_input_len = encode_inputs_embeds.size(1)
+            attention_mask = self.build_attention_mask_full_bidirectional(total_input_len).unsqueeze(0).unsqueeze(1).to(inputs_embeds.device).to(torch.bfloat16)
 
             if compress_token_ids is None:
                 compress_token_ids = mem_position_ids
@@ -218,7 +226,7 @@ class CompressLLM(torch.nn.Module):
 
             if self.task_config["use_pe"]:
                 outputs = self.model(position_ids=encode_position_ids, inputs_embeds=encode_inputs_embeds,
-                                     output_hidden_states=True)
+                                     output_hidden_states=True, attention_mask=attention_mask)
             else:
                 outputs = self.model(inputs_embeds=encode_inputs_embeds, output_hidden_states=True)
 
@@ -397,7 +405,7 @@ class CompressLLM(torch.nn.Module):
 
 def freeze_encoder(model):
     for name, param in model.named_parameters():
-        if name == "mem_tokens" or name == "special_tokens":
+        if name == "role_tokens" or name == "special_tokens":
             continue
         param.requires_grad = False
 
