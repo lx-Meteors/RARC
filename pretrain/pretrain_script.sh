@@ -26,7 +26,7 @@ cd sft
 CUDA_VISIBLE_DEVICES=4,5,6,7 python ./instruction_trainer.py --work_dir  '../experiment/main_experiment/500x_DPL_1B_MultiChunk' --port 14527
 CUDA_VISIBLE_DEVICES=4,5,6,7 python ./instruction_evaluator.py --work_dir  '../experiment/main_experiment/500x_DPL_1B_MultiChunk' --batch_size 1
 
-#nohup bash pretrain_script.sh > bash.log 2>&1 &
+# nohup bash pretrain_script.sh > bash.log 2>&1 &
 # 后台启动方式
 # nohup python ./instruction_trainer.py --work_dir   '../experiment/main_experiment/ICAE_EPL_1B_SingleChunk' --port 14527 > train.log 2>&1 &
 # tail -f bash.log
