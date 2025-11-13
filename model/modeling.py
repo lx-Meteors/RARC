@@ -1,5 +1,8 @@
 import sys
 import os
+
+from triton.language import bfloat16
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from path_config import BASE_PATH
 sys.path.append(BASE_PATH)
@@ -8,6 +11,42 @@ import torch
 from torch import nn
 import math
 from model.lora import LinearLoraLayer
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class AnchorSelector(nn.Module):
+    def __init__(self, hidden_size, device, temperature=1.0):
+        super().__init__()
+        self.linear = nn.Linear(hidden_size, 1).to(device=device, dtype=torch.bfloat16) # 每个 token 的 score
+        self.temperature = temperature
+
+    def forward(self, hidden_states, k, role_embedding):
+        bsz, seq_len, emb_size = role_embedding.size()
+        """
+        hidden_states: [batch, seq_len, hidden_size]
+        """
+        logits = self.linear(hidden_states).squeeze(-1)  # [batch, seq_len]
+        # -----------------------
+        # Gumbel-Softmax sampling
+        # -----------------------
+        gumbels = -torch.empty_like(logits).exponential_().log()  # Gumbel(0,1)
+        y = (logits + gumbels) / self.temperature
+        probs = F.softmax(y, dim=-1)  # [batch, seq_len] 可微
+
+        # -----------------------
+        # Top-k 硬选择（ST trick）
+        # -----------------------
+        _, topk_idx = torch.topk(probs, k, dim=-1)
+        topk_idx_1d = topk_idx.squeeze(0)
+
+        # 解决role-embedding不更新问题
+        add_tensor = torch.zeros_like(hidden_states)
+        add_tensor.scatter_add_(1, topk_idx.unsqueeze(-1).expand(-1, -1, emb_size), role_embedding)
+
+        # Straight-through trick: forward 用硬 mask，backward 用 soft probs
+        hidden_states = hidden_states + probs.unsqueeze(-1) - probs.detach().unsqueeze(-1) + add_tensor
+        return hidden_states, topk_idx_1d  # [batch, seq_len], 可用于加权 token
 
 
 class CompressLLM(torch.nn.Module):
@@ -31,6 +70,7 @@ class CompressLLM(torch.nn.Module):
         config = self.model.config
         self.vocab_size = config.vocab_size
         self.chunk_size = task_config["chunk_size"]
+        self.anchor_selector = AnchorSelector(config.hidden_size, self.device)
         self.role_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((mem_size, config.hidden_size)),requires_grad=True)
         self.special_tokens = nn.Parameter(self.model.model.embed_tokens.weight.new_zeros((2, config.hidden_size)), requires_grad=True)
         self.compress_ratio = compress_ratio
@@ -202,10 +242,14 @@ class CompressLLM(torch.nn.Module):
             # print(f"encode_position_ids:{encode_position_ids}")
 
             # 添加role_token
-            encode_inputs_embeds = inputs_embeds.clone()
+            # encode_inputs_embeds = inputs_embeds.clone()
             role_embeds = (self.role_tokens[:current_mem_size,:]).unsqueeze(0).expand(bsz, current_mem_size, emb_size)
-            mem_real_idx = mem_position_ids.squeeze(0) - 1 - start_idx
-            encode_inputs_embeds.index_add_(1, mem_real_idx, role_embeds)
+            # mem_real_idx = mem_position_ids.squeeze(0) - 1 - start_idx
+            # encode_inputs_embeds.index_add_(1, mem_real_idx, role_embeds)
+
+            # 可学习选择器
+            encode_inputs_embeds, mem_real_idx = self.anchor_selector(inputs_embeds, current_mem_size, role_embeds)
+
             # 添加双向注意力
             attention_mask = self.build_attention_mask_full_bidirectional(seq_len).unsqueeze(0).unsqueeze(1).to(inputs_embeds.device).to(torch.bfloat16)
 
@@ -392,7 +436,7 @@ class CompressLLM(torch.nn.Module):
 
 def freeze_encoder(model):
     for name, param in model.named_parameters():
-        if name == "role_tokens" or name == "special_tokens":
+        if name == "role_tokens" or name == "special_tokens" or name == "anchor_selector.linear.weight":
             continue
         param.requires_grad = False
 
