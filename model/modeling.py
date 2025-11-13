@@ -198,6 +198,7 @@ class CompressLLM(torch.nn.Module):
             mem_position_ids = self.get_uniform_position_ids(x_1=start_idx + 1, x_n=end_idx+1, ratio=self.compress_ratio)
             # 获取当前需要mem_token(压缩)数量
             current_mem_size = mem_position_ids.size(1)
+            mem_position_ids = torch.arange(end_idx - current_mem_size + 1, end_idx + 1, device=self.device).unsqueeze(0)
             encoder_mem_size += current_mem_size
             # print(f"encode_position_ids:{encode_position_ids}")
 
