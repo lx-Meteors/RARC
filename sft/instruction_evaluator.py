@@ -122,8 +122,16 @@ class Evaluator:
             for inputs in tqdm(loader,total=len(eval_examples)//self.batch_size):
                 inputs = {key:(value.to(rank) if value is not None else None) for key,value in inputs.items()}
                 # output = model(inputs=inputs)
-                generate_text = model.lm_inference(inputs)
-                info_list.append({"generate_text": generate_text})
+                generate_text, time_info = model.lm_inference(inputs)
+
+                # === 收集结果 ===
+                result = {
+                    "generate_text": generate_text,
+                    "compress_time_ms": time_info["compress_time_ms"],
+                    "decode_time_total_ms": time_info["decode_time_total_ms"],
+                    "decode_time_avg_ms": time_info["decode_time_avg_ms"],
+                }
+                info_list.append(result)
 
         with open(self.work_dir+f'/instruction_eval_info_list_{rank}.json', 'w', encoding='utf-8') as f:
             json.dump(info_list, f, ensure_ascii=False)
