@@ -110,7 +110,8 @@ def train(rank, args, world_size):
     
     info_list = []
     start_time = time.time()
-                    
+    for name, param in model.named_parameters():
+        print(f"{name}: requires_grad={param.requires_grad}, shape={param.shape}")
     for epoch in range(1):
 
         def save():

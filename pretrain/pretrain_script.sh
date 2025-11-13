@@ -22,11 +22,11 @@ python ./pre_evaluator.py --work_dir '../experiment/rebuttal/15x_8gpu/SAC_Encode
 #python ./pre_trainer.py --work_dir '../experiment/experiment_5x_8gpu/RARC' --port 14574
 #python ./pre_evaluator.py --work_dir '../experiment/experiment_5x_8gpu/RARC' --batch_size 1
 
-#cd ..
-#cd sft
-#
-#python ./instruction_trainer.py --work_dir   '../experiment/rebuttal/15x_8gpu/SAC_Encoder_ALBERT' --port 14527
-#python ./instruction_evaluator.py --work_dir   '../experiment/rebuttal/15x_8gpu/SAC_Encoder_ALBERT' --batch_size 1
+cd ..
+cd sft
+
+python ./instruction_trainer.py --work_dir   '../experiment/rebuttal/15x_8gpu/SAC_Encoder_ALBERT' --port 14527
+python ./instruction_evaluator.py --work_dir   '../experiment/rebuttal/15x_8gpu/SAC_Encoder_ALBERT' --batch_size 1
 
 #python ./instruction_trainer.py --work_dir   '../experiment/experiment_5x_8gpu/RARC' --port 14529
 #python ./instruction_evaluator.py --work_dir   '../experiment/experiment_5x_8gpu/RARC' --batch_size 1
