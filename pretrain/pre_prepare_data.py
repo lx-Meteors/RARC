@@ -1,7 +1,7 @@
 import sys
 import os
 from datasets import load_dataset
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AlbertTokenizer
 import torch
 from torch import nn
 import os
@@ -39,15 +39,15 @@ def get_long_text_list(dataset_repo, output_dir, min_len, max_len):
 
 def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruction_dataset_repo, output_dir):
     model_name = model_id.split('/')[-1]
-    train_data_name = f"{output_dir}/train_"+model_name+"_"+str(samples_num)+f"samples_{min_len}-{max_len}len.pt"
-    eval_data_name = f"{output_dir}/eval_"+model_name+"_"+str(samples_num)+f"samples_{min_len}-{max_len}len.pt"
+    train_data_name = f"{output_dir}/train_"+model_name+"_"+str(samples_num)+f"samples_{min_len}-{max_len}len_albert.pt"
+    eval_data_name = f"{output_dir}/eval_"+model_name+"_"+str(samples_num)+f"samples_{min_len}-{max_len}len_albert.pt"
 
     if os.path.exists(train_data_name):
         print("loading data...")
         return torch.load(train_data_name), torch.load(eval_data_name)
     print(f"preparing data :train_data_name:{train_data_name}")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    tokenizer = AlbertTokenizer.from_pretrained("/mnt/zhaorunsong/models/albert-xlarge-v2")
     
     long_text_list = get_long_text_list(dataset_repo, output_dir, min_len, max_len)
 

@@ -1,7 +1,7 @@
 import sys
 import os
 from datasets import load_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AlbertTokenizer
 import torch
 import random
 from tqdm import tqdm
@@ -43,7 +43,7 @@ def get_examples_list(instruction_dataset_repo, split):
 
     
 def get_ids(instruction_dataset_repo_name, examples_list, tokenizer, split):
-
+    tokenizer_albert = AlbertTokenizer.from_pretrained("/mnt/zhaorunsong/models/albert-xlarge-v2")
     examples = []
     # info_list = []
     minn = 999999
@@ -63,7 +63,7 @@ def get_ids(instruction_dataset_repo_name, examples_list, tokenizer, split):
         ################################################################################
         answer = example["answers"][0]
 
-        context = tokenizer(example["context"], add_special_tokens=False)["input_ids"]
+        context = tokenizer_albert(example["context"], add_special_tokens=False)["input_ids"]
         prompt = tokenizer(example["question"], add_special_tokens=False)["input_ids"]
         answer = tokenizer(answer, add_special_tokens=False)["input_ids"]
         
@@ -104,8 +104,8 @@ def get_examples(model_id, instruction_dataset_repo, samples_num, min_len, max_l
     
     model_name = model_id.split('/')[-1]
     instruction_dataset_repo_name = instruction_dataset_repo.split('/')[-1]
-    train_data_name = f"output/{instruction_dataset_repo_name}_train_"+model_name+f"_{samples_num}samples_instruction.pt"
-    eval_data_name = f"output/{instruction_dataset_repo_name}_eval_"+model_name+f"_{samples_num}samples_instruction.pt"
+    train_data_name = f"output/{instruction_dataset_repo_name}_train_"+model_name+f"_{samples_num}samples_instruction_albert.pt"
+    eval_data_name = f"output/{instruction_dataset_repo_name}_eval_"+model_name+f"_{samples_num}samples_instruction_albert.pt"
 
     print(f"in:train_data_name:{train_data_name}")
     if os.path.exists(train_data_name):

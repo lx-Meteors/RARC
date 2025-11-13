@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from path_config import BASE_PATH
 sys.path.append(BASE_PATH)
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AlbertModel
 import torch
 from torch import nn
 import math
@@ -15,11 +15,9 @@ class CompressLLM(torch.nn.Module):
         super().__init__()
         self.loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_id,
+        self.model = AlbertModel.from_pretrained("/mnt/zhaorunsong/models/albert-xlarge-v2",
             torch_dtype=torch.bfloat16,
-            device_map=f"cuda:{device_rank}",
-        )
+            device_map=f"cuda:{device_rank}",)
         self.decoder = AutoModelForCausalLM.from_pretrained(
             model_id,
             torch_dtype=torch.bfloat16,
