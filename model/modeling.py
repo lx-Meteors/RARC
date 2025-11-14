@@ -160,10 +160,11 @@ class CompressLLM(torch.nn.Module):
         return num_chunks
 
     def get_uniform_position_ids(self, x_1, x_n, ratio):
-        start = (x_1 + (ratio - 1) // 2)
+        # 每个区间取末尾
+        start = x_1 + ratio - 1
         end = x_n
-        if start >= end: # 因为有时候会存在513 > 512的情况 -> 实际长度512 所以start应该从511开始
-            start = x_1
+        # 避免超出 x_n
+        start = min(start, end - 1)
         return torch.arange(start, end, step=ratio, device=self.device).unsqueeze(0)
 
     def compress(self, inputs):

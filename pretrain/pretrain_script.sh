@@ -16,20 +16,26 @@
 
 # nohup python pre_prepare_data.py --work_dir '../experiment/analysis_experiment/RARC_1B_MultiChunk' > pre_evaluator.log 2>&1 &
 
-python ./pre_trainer.py --work_dir '../experiment/experiment_15x_8gpu/RARC' --port 14572
-python ./pre_evaluator.py --work_dir '../experiment/experiment_15x_8gpu/RARC' --batch_size 1
-
-python ./pre_trainer.py --work_dir '../experiment/experiment_5x_8gpu/RARC' --port 14574
-python ./pre_evaluator.py --work_dir '../experiment/experiment_5x_8gpu/RARC' --batch_size 1
+python ./pre_trainer.py --work_dir '../experiment/rebuttal/15x_8gpu/SAC_Chunk_Last_Token' --port 14572
+python ./pre_evaluator.py --work_dir '../experiment/rebuttal/15x_8gpu/SAC_Chunk_Last_Token' --batch_size 1
 
 cd ..
 cd sft
 
-python ./instruction_trainer.py --work_dir   '../experiment/experiment_15x_8gpu/RARC' --port 14527
-python ./instruction_evaluator.py --work_dir   '../experiment/experiment_15x_8gpu/RARC' --batch_size 1
+python ./instruction_trainer.py --work_dir   '../experiment/rebuttal/15x_8gpu/SAC_Chunk_Last_Token' --port 14527
+python ./instruction_evaluator.py --work_dir   '../experiment/rebuttal/15x_8gpu/SAC_Chunk_Last_Token' --batch_size 1
 
-python ./instruction_trainer.py --work_dir   '../experiment/experiment_5x_8gpu/RARC' --port 14529
-python ./instruction_evaluator.py --work_dir   '../experiment/experiment_5x_8gpu/RARC' --batch_size 1
+cd ..
+cd pretrain
+python ./pre_trainer.py --work_dir '../experiment/rebuttal/5x_8gpu/SAC_Chunk_Last_Token' --port 14574
+python ./pre_evaluator.py --work_dir '../experiment/rebuttal/5x_8gpu/SAC_Chunk_Last_Token' --batch_size 1
+cd ..
+cd sft
+python ./instruction_trainer.py --work_dir   '../experiment/rebuttal/5x_8gpu/SAC_Chunk_Last_Token' --port 14529
+python ./instruction_evaluator.py --work_dir   '../experiment/rebuttal/5x_8gpu/SAC_Chunk_Last_Token' --batch_size 1
+
+# python ../util/evaluate_ood.py --work_dir  '../experiment/rebuttal/5x_8gpu/SAC_Chunk_Last_Token'
+# python ../util/evaluate_iid.py --work_dir  '../experiment/rebuttal/5x_8gpu/SAC_Chunk_Last_Token'
 ## nohup bash pretrain_script.sh  > bash.log 2>&1 &
 # 后台启动方式
 #nohup python ./pre_trainer.py --work_dir '../experiment/icae_15x_upl_sure' --port 14571 > train.log 2>&1 &
