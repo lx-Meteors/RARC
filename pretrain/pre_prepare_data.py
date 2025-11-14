@@ -47,26 +47,29 @@ def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruct
         return torch.load(train_data_name), torch.load(eval_data_name)
     print(f"preparing data :train_data_name:{train_data_name}")
 
-    tokenizer = AlbertTokenizer.from_pretrained("/mnt/zhaorunsong/models/albert-xlarge-v2")
+    tokenizer_albert = AlbertTokenizer.from_pretrained("/mnt/zhaorunsong/models/albert-xlarge-v2")
+    tokenizer_llama = AutoTokenizer.from_pretrained(model_id)
     
     long_text_list = get_long_text_list(dataset_repo, output_dir, min_len, max_len)
 
     examples = []
     for text in tqdm(long_text_list, desc="Processing examples"):
-        
-        ids = tokenizer(text, add_special_tokens=False)["input_ids"]
-        
-        if len(ids)<min_len:
+
+        half1, half2 = split_in_half(text)
+        half1 = tokenizer_albert(half1, add_special_tokens=False)["input_ids"]
+        half2 = tokenizer_llama(half2, add_special_tokens=False)["input_ids"]
+
+        if (len(half1)+len(half2))<min_len:
             continue
-        if len(ids)>max_len:
+        if (len(half1)+len(half2))>max_len:
             continue
 
         # half for prefix, half for LM
-        last_start = len(ids) // 2
+        # last_start = len(ids) // 2
 
-        inputs = [tokenizer.bos_token_id] + ids[:last_start] 
-        ae_target = inputs + [tokenizer.eos_token_id]
-        lm_target = ids[last_start:] + [tokenizer.eos_token_id]
+        inputs = [tokenizer_albert.bos_token_id] + half1
+        ae_target = inputs + [tokenizer_llama.eos_token_id]
+        lm_target = half2 + [tokenizer_llama.eos_token_id]
         
         inputs = torch.LongTensor(inputs)
         ae_target = torch.LongTensor(ae_target)
@@ -82,6 +85,12 @@ def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruct
     
     return examples[1000:], examples[:1000]
 
+def split_in_half(s):
+    length = len(s)
+    mid = (length + 1) // 2  # 处理奇数长度时前半部分多1个字符
+    first_half = s[:mid]
+    second_half = s[mid:]
+    return first_half, second_half
 
 
 

@@ -18,20 +18,16 @@
 
 python ./pre_trainer.py --work_dir '../experiment/rebuttal/15x_8gpu/SAC_Encoder_ALBERT' --port 14572
 python ./pre_evaluator.py --work_dir '../experiment/rebuttal/15x_8gpu/SAC_Encoder_ALBERT' --batch_size 1
-
-#python ./pre_trainer.py --work_dir '../experiment/experiment_5x_8gpu/RARC' --port 14574
-#python ./pre_evaluator.py --work_dir '../experiment/experiment_5x_8gpu/RARC' --batch_size 1
-
 cd ..
 cd sft
-
 python ./instruction_trainer.py --work_dir   '../experiment/rebuttal/15x_8gpu/SAC_Encoder_ALBERT' --port 14527
 python ./instruction_evaluator.py --work_dir   '../experiment/rebuttal/15x_8gpu/SAC_Encoder_ALBERT' --batch_size 1
-
+#python ./pre_trainer.py --work_dir '../experiment/experiment_5x_8gpu/RARC' --port 14574
+#python ./pre_evaluator.py --work_dir '../experiment/experiment_5x_8gpu/RARC' --batch_size 1
 #python ./instruction_trainer.py --work_dir   '../experiment/experiment_5x_8gpu/RARC' --port 14529
 #python ./instruction_evaluator.py --work_dir   '../experiment/experiment_5x_8gpu/RARC' --batch_size 1
 
-## nohup bash pretrain_script.sh  > bash.log 2>&1 &
+# nohup bash pretrain_script.sh  > bash.log 2>&1 &
 # 后台启动方式
 #nohup python ./pre_trainer.py --work_dir '../experiment/icae_15x_upl_sure' --port 14571 > train.log 2>&1 &
 # tail -f bash.log

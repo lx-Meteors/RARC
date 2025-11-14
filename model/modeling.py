@@ -140,7 +140,7 @@ class CompressLLM(torch.nn.Module):
 
             #  in prepare_data.py, we drop the fisrt -100, so here we drop the [LM]'s logits which is used to predict the fisrt -100.
             #  but it's no influence because -100 are not used to calculate the loss.
-            logits = logits[:, 1:]    
+            logits = logits[:, 1:]
             logits = logits.contiguous().view(-1, self.vocab_size)
             inputs["instruction_target"] = inputs["instruction_target"].contiguous().view(-1).to(logits.device)
             lm_loss = self.loss_fct(logits, inputs["instruction_target"])
@@ -247,19 +247,19 @@ class CompressLLM(torch.nn.Module):
         return compress_token_ids, compress_token, end_idx
 
     def lm_inference(self,inputs,generate_num=1024):
-        compress_token_ids, compress_token, end_idx, encoder_hidden_states, encoder_past_key_values, encoder_mem_size = self.compress(inputs)
+        compress_token_ids, compress_token, end_idx = self.compress(inputs)
         lm_target_emb = self.decoder.model.embed_tokens(inputs['lm_targets'])
         bsz, seq_len, emb_size = lm_target_emb.size()
         expand_lm_token = self.special_tokens[1:2].unsqueeze(0).expand(bsz, 1, emb_size)
 
-        lm_emb = torch.cat([expand_lm_token, lm_target_emb], dim=1)
+        lm_emb = torch.cat([compress_token, expand_lm_token, lm_target_emb], dim=1)
         # context position ids:[1,......,end_idx]
         # [LM] position ids:[end_idx];  QA position ids:[end_idx+1,.......]
         latter_position_ids = torch.arange(end_idx, end_idx + seq_len + 1, device=lm_target_emb.device).unsqueeze(0)
         lm_position_ids = latter_position_ids
 
         generate_text = []
-        past_key_values = encoder_past_key_values
+        past_key_values = None
         next_inputs_embeds = lm_emb.clone()
         next_position_ids = lm_position_ids.clone()
         for i in range(generate_num):
