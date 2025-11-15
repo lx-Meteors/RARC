@@ -28,7 +28,7 @@ from instruction_dataloader import get_dataset
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--work_dir', type=str, default='instruction_rank-128_cl-lm_mrqa', required=False, help='Directory including the configuration file')
+    parser.add_argument('--work_dir', type=str, default='../experiment/rebuttal/15x_8gpu/SAC_Long', required=False, help='Directory including the configuration file')
     parser.add_argument('--batch_size', type=int, default=1, required=False, help='total batch size')
     return parser.parse_args()
 
@@ -100,7 +100,7 @@ class Evaluator:
     def evaluate(self, rank=0):
         training_config = self.config["sft_training_config"]
         task_config = self.config["sft_task_config"]
-        train_examples, eval_examples = get_examples(**self.config["data_config"])
+        eval_examples = get_examples(**self.config["data_config"])
         example_num_per_gpu = len(eval_examples)//training_config["device_count"]
 
         if rank <= self.device_count-2:
@@ -228,10 +228,12 @@ if __name__ == "__main__":
 
     print("calculate BLEU4...")
     instruction_dataset_name = config["data_config"]["instruction_dataset_repo"].split('/')[-1]
-    if os.path.exists(f'output/{instruction_dataset_name}_test_instruction_dataset.json'):
-        with open(f'output/{instruction_dataset_name}_test_instruction_dataset.json', 'r', encoding='utf-8') as f:
-            examples_list =  json.load(f)
-
+    examples_list = []
+    if os.path.exists(f'output/{instruction_dataset_name}_test_instruction_dataset.jsonl'):
+        with open(f'output/{instruction_dataset_name}_test_instruction_dataset.jsonl', 'r', encoding='utf-8') as f:
+            for line in f:
+                item = json.loads(line)
+                examples_list.append(item)
     instruction_inference_results = []
     bleu4_list = []
     rouge1_scores = []
