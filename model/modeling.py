@@ -417,7 +417,7 @@ def get_model_for_compress(model_id, task_config, rank):
 
     def add_compress_lora(model, task_config):
         for name, module in model.named_children():
-            if isinstance(module, nn.Linear) and ((name == "q_proj") or (name == "v_proj")):
+            if isinstance(module, nn.Linear) and ((name == "query") or (name == "value")):
                 setattr(model, name, LinearLoraLayer(module.in_features, module.out_features, r=128,
                                                      weight=module.weight.data.clone()))
             else:
@@ -432,10 +432,15 @@ def get_model_for_compress(model_id, task_config, rank):
         task_config=task_config
     )
 
+    adapter_state_dict = torch.load("/mnt/zhaorunsong/lx/RARC/experiment/rebuttal/15x_8gpu/SAC_Encoder_ALBERT/output/adapter.pt", map_location='cpu')  # 先加载到CPU
+    # 将adapter的权重转移到模型的设备上
+    adapter_state_dict = {k: v.to(model.device) for k, v in adapter_state_dict.items()}
+    model.load_state_dict(adapter_state_dict, strict=False)
+
     # freeze all the model except mem tokens and special tokens
-    freeze_encoder(model.decoder)
+    freeze_encoder(model)
     # only add lora to encoder, don't add lora to model.decoder
-    # add_compress_lora(model.model, task_config)
+    add_compress_lora(model.model, task_config)
     return model
 
 def get_model(model_id, task_config, rank):
