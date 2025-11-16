@@ -28,7 +28,7 @@ from instruction_dataloader import get_dataset
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--work_dir', type=str, default='instruction_rank-128_cl-lm_mrqa', required=False, help='Directory including the configuration file')
+    parser.add_argument('--work_dir', type=str, default='../experiment/test_time/15x/SAC', required=False, help='Directory including the configuration file')
     parser.add_argument('--batch_size', type=int, default=1, required=False, help='total batch size')
     return parser.parse_args()
 
@@ -101,7 +101,7 @@ class Evaluator:
         training_config = self.config["sft_training_config"]
         task_config = self.config["sft_task_config"]
         train_examples, eval_examples = get_examples(**self.config["data_config"])
-        eval_examples = eval_examples[:800]
+        eval_examples = eval_examples[:100]
         example_num_per_gpu = len(eval_examples)//training_config["device_count"]
 
         if rank <= self.device_count-2:
@@ -300,6 +300,14 @@ if __name__ == "__main__":
     # print(f"avg_compress_loss:{avg_compress_loss}")
     rouge1_f1 = np.mean(rouge1_scores)
     print(f"rouge1_f1:{rouge1_f1}")
+    compress_times = [x["compress_time_ms"] for x in info_list]
+    decode_times = [x["decode_time_total_ms"] for x in info_list]
+    avg_compress_time = np.mean(compress_times)
+    avg_decode_time = np.mean(decode_times)
+
+    print("Avg compress_time_ms:", avg_compress_time)
+    print("Avg decode_time_total_ms:", avg_decode_time)
+
     with open(args.work_dir+f'/output/instruction_brief_eval_info.json', 'w', encoding='utf-8') as f:
         json.dump(f"avg_bleu4:{avg_bleu4}, rouge1_f1:{rouge1_f1}", f, ensure_ascii=False)
 
