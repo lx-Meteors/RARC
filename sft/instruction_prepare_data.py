@@ -67,7 +67,7 @@ def get_ids(instruction_dataset_repo_name, examples_list, tokenizer, split):
         prompt = tokenizer(example["question"], add_special_tokens=False)["input_ids"]
         answer = tokenizer(answer, add_special_tokens=False)["input_ids"]
         
-        context_ids = [tokenizer.bos_token_id] + tokenizer("### Context:\n", add_special_tokens=False)["input_ids"] + context
+        context_ids =  tokenizer("### Context:\n", add_special_tokens=False)["input_ids"] + context
         question_ids = tokenizer("\n### Question:\n", add_special_tokens=False)["input_ids"] + prompt \
                        + tokenizer("\n### Answer:\n", add_special_tokens=False)["input_ids"]
         answer_ids = answer + [tokenizer.eos_token_id] # tokenizer("</s>", add_special_tokens=False)["input_ids"]

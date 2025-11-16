@@ -64,7 +64,7 @@ def get_examples(model_id, dataset_repo, samples_num, min_len, max_len, instruct
         # half for prefix, half for LM
         last_start = len(ids) // 2
 
-        inputs = [tokenizer.bos_token_id] + ids[:last_start] 
+        inputs = ids[:last_start]
         ae_target = inputs + [tokenizer.eos_token_id]
         lm_target = ids[last_start:] + [tokenizer.eos_token_id]
         
