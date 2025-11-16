@@ -266,7 +266,7 @@ class CompressLLM(torch.nn.Module):
 
         return concatenated_past_key_values, end_idx
 
-    def lm_inference(self, inputs, generate_num=1024):
+    def lm_inference(self, inputs, generate_num=64):
         # ==================== 计时：压缩阶段开始 ====================
         torch.cuda.synchronize()
         start_compress = torch.cuda.Event(enable_timing=True)
