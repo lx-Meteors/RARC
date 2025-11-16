@@ -19,8 +19,10 @@
 python ./pre_trainer.py --work_dir '../experiment/experiment_15x_8gpu/RARC' --port 14572
 python ./pre_evaluator.py --work_dir '../experiment/experiment_15x_8gpu/RARC' --batch_size 1
 
-python ./pre_trainer.py --work_dir '../experiment/experiment_5x_8gpu/RARC' --port 14574
-python ./pre_evaluator.py --work_dir '../experiment/experiment_5x_8gpu/RARC' --batch_size 1
+
+python pre_prepare_data.py --work_dir  '../experiment/rebuttal/15x_8gpu/SAC_Qwen'
+python ./pre_trainer.py --work_dir '../experiment/rebuttal/15x_8gpu/SAC_Qwen' --port 14574
+python ./pre_evaluator.py --work_dir '../experiment/rebuttal/15x_8gpu/SAC_Qwen' --batch_size 1
 
 cd ..
 cd sft
@@ -35,3 +37,4 @@ python ./instruction_evaluator.py --work_dir   '../experiment/experiment_5x_8gpu
 #nohup python ./pre_trainer.py --work_dir '../experiment/icae_15x_upl_sure' --port 14571 > train.log 2>&1 &
 # tail -f bash.log
 # tail -f RARC_1B_MultiChunk.log
+/mnt/zhaorunsong/lx/RARC/experiment/rebuttal/15x_8gpu/SAC_Qwen
