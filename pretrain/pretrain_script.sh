@@ -21,10 +21,11 @@
 # CUDA_VISIBLE_DEVICES=0,1,2,3 python ./pre_trainer.py --work_dir '../experiment/main_experiment/test_1B' --port 14572
 #CUDA_VISIBLE_DEVICES=4,5,6,7 python ./pre_trainer.py --work_dir '../experiment/main_experiment/500x_DPL_1B_MultiChunk' --port 14571
 #CUDA_VISIBLE_DEVICES=4,5,6,7 python ./pre_evaluator.py --work_dir  '../experiment/main_experiment/500x_DPL_1B_MultiChunk'  --batch_size 1
+
 cd ..
 cd sft
-CUDA_VISIBLE_DEVICES=4,5,6,7 python ./instruction_trainer.py --work_dir  '../experiment/main_experiment/500x_DPL_1B_MultiChunk' --port 14527
-CUDA_VISIBLE_DEVICES=4,5,6,7 python ./instruction_evaluator.py --work_dir  '../experiment/main_experiment/500x_DPL_1B_MultiChunk' --batch_size 1
+python ./instruction_trainer.py --work_dir   '../experiment/rebuttal/51x_8gpu/500x_qmsum' --port 14527
+python ./instruction_evaluator.py --work_dir   '../experiment/rebuttal/51x_8gpu/500x_qmsum' --batch_size 1
 
 #nohup bash pretrain_script.sh > bash.log 2>&1 &
 # 后台启动方式
