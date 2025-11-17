@@ -61,10 +61,10 @@ def get_ids(instruction_dataset_repo_name, examples_list, tokenizer, split):
         #             break
         #         answer += example[("answers")][i] + " "
         ################################################################################
-        answer = example["answers"][0]
+        answer = example["output"]
 
-        context = tokenizer(example["context"], add_special_tokens=False)["input_ids"]
-        prompt = tokenizer(example["question"], add_special_tokens=False)["input_ids"]
+        context = tokenizer(example["input"], add_special_tokens=False)["input_ids"]
+        prompt = tokenizer(example["prompt"], add_special_tokens=False)["input_ids"]
         answer = tokenizer(answer, add_special_tokens=False)["input_ids"]
         
         context_ids = [tokenizer.bos_token_id] + tokenizer("### Context:\n", add_special_tokens=False)["input_ids"] + context
