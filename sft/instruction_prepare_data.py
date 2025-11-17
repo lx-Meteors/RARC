@@ -92,7 +92,7 @@ def get_ids(instruction_dataset_repo_name, examples_list, tokenizer, min_len, ma
 def get_examples(model_id, instruction_dataset_repo, samples_num, min_len, max_len, dataset_repo):
     model_name = model_id.split('/')[-1]
     instruction_dataset_repo_name = instruction_dataset_repo.split('/')[-1]
-    eval_data_name = f"output/{instruction_dataset_repo_name}_eval_" + model_name + f"_{samples_num}samples_instruction.pt"
+    eval_data_name = f"output/{instruction_dataset_repo_name}_eval_" + model_name + f"_{samples_num}samples_instruction_24K.pt"
 
     print(f"in:train_data_name:{eval_data_name}")
     if os.path.exists(eval_data_name):

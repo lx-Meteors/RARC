@@ -37,6 +37,8 @@ CUDA_VISIBLE_DEVICES=1,2,3,4 python ./instruction_evaluator.py --work_dir   '../
 #nohup python ./instruction_trainer.py --work_dir   '../experiment/main_experiment/ICAE_EPL_1B_SingleChunk' --port 14527 > train.log 2>&1 &
 # tail -f train.log
 
-python ./instruction_evaluator.py --work_dir    '../experiment/rebuttal/5x_8gpu/500x_EPL_LongBench' --batch_size 1
-/mnt/zhaorunsong/lx/RARC/experiment/rebuttal/5x_8gpu/500x_EPL_Bidr_LongBench
-python ../util/evaluate_longbench.py --work_dir '../experiment/rebuttal/5x_8gpu/500x_EPL_LongBench'
+python ./instruction_evaluator.py --work_dir    '../experiment/rebuttal/15x_8gpu/500x_LongBench_1B_24K' --batch_size 1
+
+python ../util/evaluate_longbench.py --work_dir '../experiment/rebuttal/15x_8gpu/500x_LongBench_1B_24K'
+
+/mnt/zhaorunsong/lx/RARC/experiment/rebuttal/15x_8gpu/500x_LongBench_1B_24K
