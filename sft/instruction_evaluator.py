@@ -248,7 +248,7 @@ if __name__ == "__main__":
         #             break
         #         answer += example[("answers")][i] + " "
         ################################################################################
-        answer = example["answers"][0]
+        answer = example["output"]
         ans_text = answer
         gen_text = tokenizer.decode(gen_text, skip_special_tokens=True)
         print("answer: " , answer)
